@@ -1,13 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import {
   ArrowRight,
   Building2,
   CircleUser,
   Clock,
   FileCheck2,
+  MailWarning,
+  Pencil,
   ScanLine,
   ShieldCheck,
   Sparkles,
@@ -23,32 +25,35 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
-type Step = "welcome" | "type" | "name" | "company" | "email" | "code";
+type Step = "welcome" | "type" | "name" | "company" | "email" | "review" | "code";
 type AccountType = "individual" | "business";
 
 /** Form steps for the progress bar; the welcome pitch screen sits before them. */
-const STEPS: Exclude<Step, "welcome">[] = ["type", "name", "company", "email", "code"];
+const STEPS: Exclude<Step, "welcome">[] = ["type", "name", "company", "email", "review", "code"];
 /** Progress moves from the very first tap; the account comes last. */
 const PROGRESS: Record<Exclude<Step, "welcome">, number> = {
   type: 15,
   name: 30,
   company: 45,
-  email: 60,
-  code: 75,
+  email: 55,
+  review: 70,
+  code: 85,
 };
 
 const COPY: Record<Exclude<Step, "welcome">, { title: string; description: string }> = {
   type: { title: "How do you work?", description: "One tap. We shape everything else around this." },
   name: { title: "What should we call you?", description: "This goes on your certificates as the inspector name." },
   company: { title: "Your business name", description: "This appears on every certificate you issue." },
-  email: { title: "Where do we send your sign-in code?", description: "No password. We email you a 6-digit code instead." },
-  code: { title: "Check your email", description: "Enter the code and your account is ready." },
+  email: { title: "What is your email?", description: "No password. We send you a 6-digit sign-in code instead." },
+  review: { title: "Review your details", description: "Check everything is right, then create your account." },
+  code: { title: "Verify your email address", description: "Enter the code and your account is ready." },
 };
 
 const BENEFITS = [
@@ -59,6 +64,8 @@ const BENEFITS = [
   { icon: Clock, text: "30 days free with everything included. No card needed." },
 ];
 
+const RESEND_COOLDOWN_S = 45;
+
 export function SignupWizard() {
   const [step, setStep] = useState<Step>("welcome");
   const [accountType, setAccountType] = useState<AccountType | null>(null);
@@ -66,10 +73,19 @@ export function SignupWizard() {
   const [companyName, setCompanyName] = useState("");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [marketingOptIn, setMarketingOptIn] = useState(false);
+  const [resendIn, setResendIn] = useState(0);
   const [error, setError] = useState<string | undefined>();
   const [pending, startTransition] = useTransition();
 
   const stepIndex = step === "welcome" ? -1 : STEPS.indexOf(step);
+
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const timer = setInterval(() => setResendIn((s) => s - 1), 1000);
+    return () => clearInterval(timer);
+  }, [resendIn]);
 
   function chooseType(type: AccountType) {
     setAccountType(type);
@@ -91,6 +107,12 @@ export function SignupWizard() {
   }
 
   function submitEmail() {
+    if (!email.trim() || !email.includes("@")) return setError("Enter a valid email address");
+    setError(undefined);
+    setStep("review");
+  }
+
+  function sendCode() {
     setError(undefined);
     startTransition(async () => {
       const formData = new FormData();
@@ -98,6 +120,7 @@ export function SignupWizard() {
       formData.set("fullName", name);
       const result: OtpFormState = await requestLoginCode({}, formData);
       if (result.error) return setError(result.error);
+      setResendIn(RESEND_COOLDOWN_S);
       setStep("code");
     });
   }
@@ -111,9 +134,33 @@ export function SignupWizard() {
       formData.set("fullName", name);
       formData.set("accountType", accountType ?? "business");
       formData.set("companyName", companyName);
+      formData.set("termsAccepted", String(termsAccepted));
+      formData.set("marketingOptIn", String(marketingOptIn));
       const result = await verifySignupCode({}, formData);
       if (result?.error) setError(result.error);
     });
+  }
+
+  function ReviewRow({ label, value, editStep }: { label: string; value: string; editStep: Step }) {
+    return (
+      <div className="flex items-center justify-between gap-3 border-b py-3 last:border-b-0">
+        <div className="min-w-0">
+          <p className="text-muted-foreground text-xs">{label}</p>
+          <p className="truncate font-semibold">{value}</p>
+        </div>
+        <button
+          type="button"
+          aria-label={`Edit ${label.toLowerCase()}`}
+          className="text-primary hover:bg-primary/10 rounded-lg p-2"
+          onClick={() => {
+            setError(undefined);
+            setStep(editStep);
+          }}
+        >
+          <Pencil className="size-4" />
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -165,6 +212,7 @@ export function SignupWizard() {
               </Button>
             </>
           )}
+
           {step === "type" && (
             <div className="grid grid-cols-2 gap-3">
               <button
@@ -270,10 +318,71 @@ export function SignupWizard() {
                   required
                 />
               </div>
-              <Button type="submit" className="h-12 text-base" disabled={pending}>
-                {pending ? "Sending" : "Send my code"}
-              </Button>
+              <Button type="submit" className="h-12 text-base">Continue</Button>
             </form>
+          )}
+
+          {step === "review" && (
+            <>
+              <div className="rounded-xl border px-4">
+                <ReviewRow label="Name" value={name} editStep="name" />
+                <ReviewRow
+                  label={accountType === "individual" ? "Trading name" : "Company"}
+                  value={companyName}
+                  editStep="company"
+                />
+                <ReviewRow label="Email" value={email} editStep="email" />
+              </div>
+
+              <label className="flex cursor-pointer items-start gap-3">
+                <Checkbox
+                  checked={marketingOptIn}
+                  onCheckedChange={(checked) => setMarketingOptIn(checked === true)}
+                  className="mt-0.5"
+                />
+                <span className="text-sm">
+                  Send me helpful tips and product updates
+                  <span className="text-muted-foreground block text-xs">
+                    Only relevant content, unsubscribe any time.
+                  </span>
+                </span>
+              </label>
+
+              <label className="flex cursor-pointer items-start gap-3">
+                <Checkbox
+                  checked={termsAccepted}
+                  onCheckedChange={(checked) => setTermsAccepted(checked === true)}
+                  className="mt-0.5"
+                />
+                <span className="text-sm">
+                  I agree to the{" "}
+                  <Link className="text-primary underline underline-offset-4" href="/terms" target="_blank">
+                    Terms of Service
+                  </Link>{" "}
+                  and{" "}
+                  <Link className="text-primary underline underline-offset-4" href="/privacy" target="_blank">
+                    Privacy Policy
+                  </Link>
+                </span>
+              </label>
+
+              <Button
+                className="h-12 text-base"
+                onClick={sendCode}
+                disabled={pending || !termsAccepted}
+              >
+                {pending ? "Sending your code" : "Create account"}
+              </Button>
+              <p className="text-muted-foreground text-center text-xs">
+                <Link className="hover:text-foreground underline underline-offset-4" href="/terms" target="_blank">
+                  Terms of Service
+                </Link>
+                {" · "}
+                <Link className="hover:text-foreground underline underline-offset-4" href="/privacy" target="_blank">
+                  Privacy Policy
+                </Link>
+              </p>
+            </>
           )}
 
           {step === "code" && (
@@ -284,21 +393,41 @@ export function SignupWizard() {
                 submitCode();
               }}
             >
-              <div className="flex flex-col items-center gap-2">
-                <Label htmlFor="su-code">Code sent to {email}</Label>
-                <InputOTP maxLength={6} value={code} onChange={setCode} id="su-code" containerClassName="justify-center">
-                  <InputOTPGroup>
-                    {[0, 1, 2, 3, 4, 5].map((i) => (
-                      <InputOTPSlot key={i} index={i} className="size-12 text-lg" />
-                    ))}
-                  </InputOTPGroup>
-                </InputOTP>
-                <p className="text-muted-foreground text-xs">
-                  No code in the email? Click its confirmation link instead: that signs you in too, and we finish setup on the next screen.
+              <p className="text-sm">
+                A verification code has been sent to <span className="font-semibold">{email}</span>.
+              </p>
+              <InputOTP maxLength={6} value={code} onChange={setCode} containerClassName="justify-center">
+                <InputOTPGroup>
+                  {[0, 1, 2, 3, 4, 5].map((i) => (
+                    <InputOTPSlot key={i} index={i} className="size-12 text-lg" />
+                  ))}
+                </InputOTPGroup>
+              </InputOTP>
+
+              <div className="text-muted-foreground flex flex-col gap-2 text-xs">
+                {resendIn > 0 ? (
+                  <p>You can request another code in {resendIn} seconds.</p>
+                ) : (
+                  <button
+                    type="button"
+                    className="text-primary w-fit font-medium underline underline-offset-4"
+                    onClick={sendCode}
+                    disabled={pending}
+                  >
+                    Resend the code
+                  </button>
+                )}
+                <p className="flex items-center gap-1.5">
+                  <MailWarning className="size-3.5 text-amber-500" />
+                  <span>
+                    <span className="font-semibold">Did not get the email?</span> Check your junk or
+                    spam folder, or click the link inside it instead.
+                  </span>
                 </p>
               </div>
+
               <Button type="submit" className="h-12 text-base" disabled={pending || code.length !== 6}>
-                {pending ? "Creating your account" : "Finish signup"}
+                {pending ? "Creating your account" : "Verify and finish"}
               </Button>
             </form>
           )}
@@ -309,7 +438,7 @@ export function SignupWizard() {
             </Alert>
           )}
 
-          {stepIndex > 0 && step !== "code" && (
+          {stepIndex > 0 && step !== "code" && step !== "review" && (
             <button
               type="button"
               className="text-muted-foreground hover:text-foreground text-xs underline-offset-4 hover:underline"

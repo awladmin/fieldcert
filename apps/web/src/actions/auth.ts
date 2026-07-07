@@ -85,23 +85,34 @@ export async function verifySignupCode(_prev: OtpFormState, formData: FormData):
   const fullName = String(formData.get("fullName") ?? "").trim();
   const accountType = formData.get("accountType") === "individual" ? "individual" : "business";
   const companyName = String(formData.get("companyName") ?? "").trim();
+  const termsAccepted = formData.get("termsAccepted") === "true";
+  const marketingOptIn = formData.get("marketingOptIn") === "true";
   if (!email || token.length !== 6) return { sent: true, email, error: "Enter the 6-digit code from the email" };
+  if (!termsAccepted) return { sent: true, email, error: "You need to accept the terms to create an account" };
 
   const supabase = await createAuthClient();
   const { error } = await supabase.auth.verifyOtp({ email, token, type: "email" });
   if (error) return { sent: true, email, error: error.message };
 
-  const { saveProfileName, createOrg } = await import("@/actions/orgs");
-  if (fullName) await saveProfileName(fullName);
+  const { createOrg } = await import("@/actions/orgs");
+  const {
+    data: { user: verifiedUser },
+  } = await supabase.auth.getUser();
+  if (verifiedUser) {
+    await supabase.from("profiles").upsert({
+      id: verifiedUser.id,
+      full_name: fullName || undefined,
+      email: verifiedUser.email,
+      terms_accepted_at: new Date().toISOString(),
+      marketing_opt_in: marketingOptIn,
+    });
+  }
 
   // Invited users may already belong to an org; do not create a duplicate.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
   const { data: membership } = await supabase
     .from("org_members")
     .select("org_id")
-    .eq("user_id", user!.id)
+    .eq("user_id", verifiedUser!.id)
     .limit(1)
     .maybeSingle();
   if (!membership && companyName) {

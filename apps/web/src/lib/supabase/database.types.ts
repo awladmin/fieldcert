@@ -380,21 +380,27 @@ export type Database = {
           email: string | null
           full_name: string | null
           id: string
+          marketing_opt_in: boolean
           phone: string | null
+          terms_accepted_at: string | null
         }
         Insert: {
           created_at?: string
           email?: string | null
           full_name?: string | null
           id: string
+          marketing_opt_in?: boolean
           phone?: string | null
+          terms_accepted_at?: string | null
         }
         Update: {
           created_at?: string
           email?: string | null
           full_name?: string | null
           id?: string
+          marketing_opt_in?: boolean
           phone?: string | null
+          terms_accepted_at?: string | null
         }
         Relationships: []
       }
