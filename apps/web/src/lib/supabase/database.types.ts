@@ -331,6 +331,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_org: {
+        Args: { org_name: string; org_slug: string }
+        Returns: string
+      }
       is_org_member: { Args: { check_org: string }; Returns: boolean }
       org_role_of: {
         Args: { check_org: string }
