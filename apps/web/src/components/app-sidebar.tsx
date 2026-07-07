@@ -2,8 +2,16 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FileCheck2, LayoutDashboard, LogOut, ScrollText, Settings, Users } from "lucide-react";
+import {
+  Code2,
+  LayoutDashboard,
+  LogOut,
+  ScrollText,
+  Settings,
+  Users,
+} from "lucide-react";
 import { signOut } from "@/actions/auth";
+import { LogoMark } from "@/components/logo";
 import {
   Sidebar,
   SidebarContent,
@@ -22,6 +30,7 @@ const NAV = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard, adminOnly: false },
   { title: "Certificates", href: "/certificates", icon: ScrollText, adminOnly: false },
   { title: "Team", href: "/team", icon: Users, adminOnly: true },
+  { title: "API", href: "/developers", icon: Code2, adminOnly: true },
   { title: "Settings", href: "/settings", icon: Settings, adminOnly: true },
 ];
 
@@ -39,11 +48,11 @@ export function AppSidebar({
   return (
     <Sidebar>
       <SidebarHeader>
-        <div className="flex items-center gap-2 px-2 py-1.5">
-          <FileCheck2 className="text-primary size-5" />
-          <div className="flex flex-col">
-            <span className="text-sm font-semibold">FieldCert</span>
-            <span className="text-muted-foreground text-xs">{orgName}</span>
+        <div className="flex items-center gap-2.5 px-2 py-2">
+          <LogoMark className="size-9" />
+          <div className="flex min-w-0 flex-col">
+            <span className="text-base font-bold tracking-tight">FieldCert</span>
+            <span className="text-sidebar-foreground/70 truncate text-xs">{orgName}</span>
           </div>
         </div>
       </SidebarHeader>
@@ -57,6 +66,7 @@ export function AppSidebar({
                   <SidebarMenuButton
                     render={<Link href={item.href} />}
                     isActive={pathname.startsWith(item.href)}
+                    className="h-11 text-[15px] data-[active=true]:font-semibold"
                   >
                     <item.icon />
                     <span>{item.title}</span>
@@ -71,10 +81,16 @@ export function AppSidebar({
         <div className="flex items-center justify-between gap-2 px-2 py-1.5">
           <div className="flex min-w-0 flex-col">
             <span className="truncate text-xs font-medium">{email}</span>
-            <span className="text-muted-foreground text-xs capitalize">{role}</span>
+            <span className="text-sidebar-foreground/70 text-xs capitalize">{role}</span>
           </div>
           <form action={signOut}>
-            <Button variant="ghost" size="icon" type="submit" aria-label="Sign out">
+            <Button
+              variant="ghost"
+              size="icon"
+              type="submit"
+              aria-label="Sign out"
+              className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            >
               <LogOut className="size-4" />
             </Button>
           </form>

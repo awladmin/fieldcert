@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { useSearchParams } from "next/navigation";
+import { Logo } from "@/components/logo";
 import {
   devSignIn,
   requestLoginCode,
@@ -39,9 +41,12 @@ export function AuthCard() {
   const error = verifyState.error ?? requestState.error;
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader>
+    <main className="from-primary/15 flex min-h-screen items-center justify-center bg-gradient-to-b to-transparent p-4">
+      <Card className="w-full max-w-sm shadow-xl">
+        <CardHeader className="text-center">
+          <Link href="/" aria-label="FieldCert home" className="mx-auto mb-2 w-fit">
+            <Logo />
+          </Link>
           <CardTitle>Sign in to FieldCert</CardTitle>
           <CardDescription>Certificates, validated before they&apos;re issued.</CardDescription>
         </CardHeader>

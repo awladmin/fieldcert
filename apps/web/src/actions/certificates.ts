@@ -190,6 +190,49 @@ export async function issueCertificate(id: string): Promise<FlowResult> {
   return { ok: true, validation: gate.validation };
 }
 
+const UPLOAD_MAX_BYTES = 25 * 1024 * 1024;
+const UPLOAD_TYPES = ["application/pdf", "image/jpeg", "image/png", "image/heic", "image/webp"];
+
+/**
+ * Brings certificates from previous systems into the register. Files live in
+ * the private org-scoped bucket; access is only ever via time-limited signed URLs.
+ */
+export async function uploadLegacyCertificate(formData: FormData): Promise<FlowResult> {
+  const { supabase, user, org } = await requireOrg();
+
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return { error: "Choose a file to upload" };
+  if (file.size > UPLOAD_MAX_BYTES) return { error: "Files are limited to 25MB" };
+  if (!UPLOAD_TYPES.includes(file.type)) return { error: "Upload a PDF or a photo (JPEG, PNG, HEIC, WebP)" };
+
+  const reference = String(formData.get("reference") ?? "").trim() || file.name.replace(/\.[^.]+$/, "");
+  const extension = file.name.split(".").pop()?.toLowerCase() ?? "pdf";
+  const path = `${org.orgId}/uploads/${crypto.randomUUID()}.${extension}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("fieldcert")
+    .upload(path, file, { contentType: file.type });
+  if (uploadError) return { error: uploadError.message };
+
+  const { error } = await supabase.from("certificates").insert({
+    org_id: org.orgId,
+    kind: "UPLOADED" as const,
+    status: "issued" as const,
+    reference,
+    data: toJson({ kind: "UPLOADED", fileName: file.name }),
+    created_by: user.id,
+    issued_at: new Date().toISOString(),
+    pdf_path: path,
+  });
+  if (error) {
+    await supabase.storage.from("fieldcert").remove([path]);
+    return { error: error.message };
+  }
+
+  revalidatePath("/certificates");
+  return { ok: true };
+}
+
 /** Time-limited share link for the issued PDF (clients, landlords, agents). */
 export async function createShareLink(id: string): Promise<{ error?: string; url?: string }> {
   const { supabase } = await requireOrg();

@@ -3,6 +3,7 @@ import { requireOrg } from "@/lib/auth";
 import { createEicr } from "@/actions/certificates";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/status-badge";
+import { UploadCertificate } from "@/components/upload-certificate";
 import {
   Table,
   TableBody,
@@ -24,11 +25,14 @@ export default async function CertificatesPage() {
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">Certificates</h1>
-        <form action={createEicr}>
-          <Button type="submit">New EICR</Button>
-        </form>
+        <div className="flex items-center gap-2">
+          <UploadCertificate />
+          <form action={createEicr}>
+            <Button type="submit">New EICR</Button>
+          </form>
+        </div>
       </div>
 
       <Table>
@@ -53,8 +57,11 @@ export default async function CertificatesPage() {
               <TableRow key={c.id}>
                 <TableCell>
                   <Link className="font-medium underline-offset-4 hover:underline" href={`/certificates/${c.id}`}>
-                    {c.kind}
+                    {c.kind === "UPLOADED" ? (c.reference ?? "Uploaded") : c.kind}
                   </Link>
+                  {c.kind === "UPLOADED" && (
+                    <span className="text-muted-foreground ml-2 text-xs">Uploaded</span>
+                  )}
                 </TableCell>
                 <TableCell>
                   {addr?.line1 ? `${addr.line1}${addr.postcode ? `, ${addr.postcode}` : ""}` : "-"}

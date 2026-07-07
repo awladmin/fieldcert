@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      api_keys: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          key_hash: string
+          last_used_at: string | null
+          name: string
+          org_id: string
+          prefix: string
+          revoked_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          key_hash: string
+          last_used_at?: string | null
+          name: string
+          org_id: string
+          prefix: string
+          revoked_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          key_hash?: string
+          last_used_at?: string | null
+          name?: string
+          org_id?: string
+          prefix?: string
+          revoked_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_keys_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "api_keys_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       certificates: {
         Row: {
           approved_by: string | null
@@ -410,7 +461,7 @@ export type Database = {
       shares_org_with: { Args: { other: string }; Returns: boolean }
     }
     Enums: {
-      certificate_kind: "EICR" | "EIC" | "MEIWC"
+      certificate_kind: "EICR" | "EIC" | "MEIWC" | "UPLOADED"
       certificate_status:
         | "draft"
         | "pending_approval"
@@ -545,7 +596,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      certificate_kind: ["EICR", "EIC", "MEIWC"],
+      certificate_kind: ["EICR", "EIC", "MEIWC", "UPLOADED"],
       certificate_status: [
         "draft",
         "pending_approval",
