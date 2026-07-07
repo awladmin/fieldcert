@@ -18,6 +18,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox";
 import { StatusBadge } from "@/components/status-badge";
 import { cn } from "@/lib/utils";
+import type { BoardScan, ObservationDraft } from "@/lib/ai/extract";
+import { DraftObservationButton, ScanBoardButton } from "./ai-buttons";
 import { NumberField, SelectField, TextField, FieldIssues } from "./fields";
 
 const OBSERVATION_CODES = [
@@ -171,6 +173,39 @@ export function EicrBuilder({
       const circuitId = crypto.randomUUID();
       board.circuits.push({ id: circuitId, circuitNumber: String(board.circuits.length + 1) });
       board.testResults.push({ circuitId });
+    });
+  }
+
+  function applyBoardScan(scan: BoardScan) {
+    update((d) => {
+      if (d.boards.length === 0) {
+        d.boards.push({ id: crypto.randomUUID(), designation: "DB1", circuits: [], testResults: [] });
+      }
+      const board = d.boards[0]!;
+      if (scan.boardDesignation) board.designation = scan.boardDesignation;
+      for (const c of scan.circuits) {
+        const circuitId = crypto.randomUUID();
+        board.circuits.push({
+          id: circuitId,
+          circuitNumber: c.circuitNumber || String(board.circuits.length + 1),
+          description: c.description || undefined,
+          ocpd: {
+            curve: c.curve ?? undefined,
+            ratingA: c.ratingA ?? undefined,
+          },
+        });
+        board.testResults.push({ circuitId });
+      }
+    });
+  }
+
+  function applyObservationDraft(draft: ObservationDraft) {
+    update((d) => {
+      d.observations.push({
+        id: crypto.randomUUID(),
+        description: draft.description,
+        code: draft.code,
+      });
     });
   }
 
@@ -360,14 +395,17 @@ export function EicrBuilder({
           title={`Circuits${board?.designation ? ` (${board.designation})` : ""}`}
           description="Each circuit with its protective device and test results. Zs is checked live against BS 7671 Table 41.3."
           action={
-            <Button type="button" variant="outline" onClick={addCircuit}>
-              <Plus className="size-4" /> Add circuit
-            </Button>
+            <div className="flex items-center gap-2">
+              <ScanBoardButton onScan={applyBoardScan} disabled={readOnly} />
+              <Button type="button" variant="outline" onClick={addCircuit}>
+                <Plus className="size-4" /> Add circuit
+              </Button>
+            </div>
           }
         >
           {!board || board.circuits.length === 0 ? (
             <p className="text-muted-foreground py-4 text-center">
-              No circuits yet. Add your first circuit to start entering test results.
+              No circuits yet. Photograph the board with Scan board, or add circuits by hand.
             </p>
           ) : (
             <div className="flex flex-col gap-4">
@@ -488,9 +526,12 @@ export function EicrBuilder({
           title="Observations"
           description="Defects and departures found during the inspection, each with its classification code."
           action={
-            <Button type="button" variant="outline" onClick={addObservation}>
-              <Plus className="size-4" /> Add observation
-            </Button>
+            <div className="flex items-center gap-2">
+              <DraftObservationButton onDraft={applyObservationDraft} disabled={readOnly} />
+              <Button type="button" variant="outline" onClick={addObservation}>
+                <Plus className="size-4" /> Add observation
+              </Button>
+            </div>
           }
         >
           {cert.observations.length === 0 ? (

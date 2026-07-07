@@ -57,6 +57,7 @@ export default async function HomePage() {
             <Logo />
           </Link>
           <nav className="text-muted-foreground hidden items-center gap-6 text-sm font-medium md:flex">
+            <Link className="hover:text-foreground" href="#scanner">Board scanner</Link>
             <Link className="hover:text-foreground" href="#features">Features</Link>
             <Link className="hover:text-foreground" href="#api">API</Link>
             <Link className="hover:text-foreground" href="#reviews">Reviews</Link>
@@ -89,8 +90,9 @@ export default async function HomePage() {
               </h1>
               <p className="text-muted-foreground mt-5 max-w-xl text-lg">
                 Paperwork is the worst part of the job, and a rejected certificate is the worst
-                part of the paperwork. FieldCert checks every EICR against BS 7671 as you type:
-                wrong Zs, slow RCD, C1 on a satisfactory report, all caught on site, not in an audit.
+                part of the paperwork. FieldCert reads the board straight off a photo, then checks
+                every EICR against BS 7671 as you type: wrong Zs, slow RCD, C1 on a satisfactory
+                report, all caught on site, not in an audit.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-3">
                 <Button size="lg" className="h-12 px-7 text-base" render={<Link href="/signup" />}>
@@ -162,8 +164,58 @@ export default async function HomePage() {
           </div>
         </section>
 
+        {/* AI board scanner — headline feature */}
+        <section id="scanner" className="mx-auto w-full max-w-6xl px-6 py-20">
+          <div className="grid items-center gap-10 lg:grid-cols-2">
+            <div className="relative order-2 lg:order-1">
+              <div className="overflow-hidden rounded-2xl shadow-xl ring-1 ring-black/10">
+                <Image
+                  src="/images/pexels-17842832.jpg"
+                  alt="Engineer inspecting an electrical panel"
+                  width={800}
+                  height={533}
+                  className="h-full w-full object-cover"
+                />
+              </div>
+              <div className="bg-card absolute -top-4 -right-3 flex items-center gap-2 rounded-xl border px-4 py-2.5 shadow-xl">
+                <ScanLine className="text-primary size-5" />
+                <span className="text-sm font-semibold">Board scanned: 12 circuits found</span>
+              </div>
+            </div>
+            <div className="order-1 lg:order-2">
+              <Badge className="bg-primary text-primary-foreground mb-4 font-semibold">
+                The big one
+              </Badge>
+              <h2 className="text-3xl font-bold text-balance">
+                Photograph the board. The schedule types itself.
+              </h2>
+              <div className="mt-5 flex flex-col gap-5">
+                <div>
+                  <h3 className="text-lg font-semibold">AI board scanner</h3>
+                  <p className="text-muted-foreground mt-1">
+                    Point your phone at the consumer unit and hit Scan board. Circuits, breaker
+                    types, ratings: read straight off the photo into the schedule. Twenty minutes
+                    of typing per board, gone.
+                  </p>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold">AI observations</h3>
+                  <p className="text-muted-foreground mt-1">
+                    Snap the defect and get professional observation wording with a suggested
+                    classification code, ready to edit or accept.
+                  </p>
+                </div>
+                <p className="text-sm font-medium">
+                  And the FieldCert difference: every AI suggestion passes through the validation
+                  engine before it touches your certificate. Speed without the risk.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* Features */}
-        <section id="features" className="mx-auto w-full max-w-6xl px-6 py-20">
+        <section id="features" className="border-t mx-auto w-full max-w-6xl px-6 py-20">
           <h2 className="text-center text-3xl font-bold">Built to take the pain out of certificates</h2>
           <p className="text-muted-foreground mx-auto mt-3 max-w-2xl text-center">
             Less time on paperwork, and no certificate ever goes out wrong. Clear, chunky forms
@@ -237,53 +289,6 @@ export default async function HomePage() {
             <pre className="overflow-x-auto rounded-2xl bg-black/40 p-6 text-xs leading-relaxed text-emerald-100/90 ring-1 ring-white/10">
               {API_EXAMPLE}
             </pre>
-          </div>
-        </section>
-
-        {/* AI scanner coming soon */}
-        <section className="mx-auto w-full max-w-6xl px-6 py-20">
-          <div className="grid items-center gap-10 lg:grid-cols-2">
-            <div className="relative order-2 lg:order-1">
-              <div className="overflow-hidden rounded-2xl shadow-xl ring-1 ring-black/10">
-                <Image
-                  src="/images/pexels-17842832.jpg"
-                  alt="Engineer inspecting an electrical panel"
-                  width={800}
-                  height={533}
-                  className="h-full w-full object-cover"
-                />
-              </div>
-              <div className="bg-card absolute -top-4 -right-3 flex items-center gap-2 rounded-xl border px-4 py-2.5 shadow-xl">
-                <ScanLine className="text-primary size-5" />
-                <span className="text-sm font-semibold">Board scanned: 12 circuits found</span>
-              </div>
-            </div>
-            <div className="order-1 lg:order-2">
-              <Badge variant="outline" className="border-primary/40 text-primary mb-4 font-semibold">
-                Coming soon
-              </Badge>
-              <h2 className="text-3xl font-bold">AI that does the boring bits, safely</h2>
-              <div className="mt-5 flex flex-col gap-5">
-                <div>
-                  <h3 className="text-lg font-semibold">Board scanner</h3>
-                  <p className="text-muted-foreground mt-1">
-                    Photograph the consumer unit and the circuit schedule fills itself: breakers,
-                    ratings, the lot. Old paper certificates scan straight in too.
-                  </p>
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold">AI observations</h3>
-                  <p className="text-muted-foreground mt-1">
-                    Snap the defect and get professional observation wording with a suggested
-                    classification code, ready to edit or accept.
-                  </p>
-                </div>
-                <p className="text-sm font-medium">
-                  And the FieldCert difference: every AI suggestion passes through the validation
-                  engine before it touches your certificate. Speed without the risk.
-                </p>
-              </div>
-            </div>
           </div>
         </section>
 
