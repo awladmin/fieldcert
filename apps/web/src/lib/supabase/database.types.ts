@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       api_keys: {
@@ -68,16 +93,19 @@ export type Database = {
       certificates: {
         Row: {
           approved_by: string | null
+          assigned_to: string | null
           created_at: string
           created_by: string
           customer_id: string | null
           data: Json
           id: string
           issued_at: string | null
+          job_number: string | null
           kind: Database["public"]["Enums"]["certificate_kind"]
           org_id: string
           pdf_path: string | null
           property_id: string | null
+          qs_member: string | null
           reference: string | null
           status: Database["public"]["Enums"]["certificate_status"]
           updated_at: string
@@ -85,16 +113,19 @@ export type Database = {
         }
         Insert: {
           approved_by?: string | null
+          assigned_to?: string | null
           created_at?: string
           created_by: string
           customer_id?: string | null
           data?: Json
           id?: string
           issued_at?: string | null
+          job_number?: string | null
           kind: Database["public"]["Enums"]["certificate_kind"]
           org_id: string
           pdf_path?: string | null
           property_id?: string | null
+          qs_member?: string | null
           reference?: string | null
           status?: Database["public"]["Enums"]["certificate_status"]
           updated_at?: string
@@ -102,16 +133,19 @@ export type Database = {
         }
         Update: {
           approved_by?: string | null
+          assigned_to?: string | null
           created_at?: string
           created_by?: string
           customer_id?: string | null
           data?: Json
           id?: string
           issued_at?: string | null
+          job_number?: string | null
           kind?: Database["public"]["Enums"]["certificate_kind"]
           org_id?: string
           pdf_path?: string | null
           property_id?: string | null
+          qs_member?: string | null
           reference?: string | null
           status?: Database["public"]["Enums"]["certificate_status"]
           updated_at?: string
@@ -121,6 +155,13 @@ export type Database = {
           {
             foreignKeyName: "certificates_approved_by_fkey"
             columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "certificates_assigned_to_fkey"
+            columns: ["assigned_to"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -151,6 +192,13 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "certificates_qs_member_fkey"
+            columns: ["qs_member"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -603,6 +651,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       certificate_kind: ["EICR", "EIC", "MEIWC", "UPLOADED"],

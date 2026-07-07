@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { requireOrg } from "@/lib/auth";
-import { createEicr } from "@/actions/certificates";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/status-badge";
@@ -32,9 +31,7 @@ export default async function DashboardPage() {
     <div className="mx-auto flex max-w-4xl flex-col gap-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Dashboard</h1>
-        <form action={createEicr}>
-          <Button type="submit">New EICR</Button>
-        </form>
+        <Button render={<Link href="/certificates?new=1" />}>New certificate</Button>
       </div>
 
       <div className={showApprovals ? "grid grid-cols-3 gap-4" : "grid grid-cols-2 gap-4"}>

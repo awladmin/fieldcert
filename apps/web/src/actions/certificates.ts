@@ -21,15 +21,170 @@ function certReference(id: string) {
   return `FC-${id.slice(0, 8).toUpperCase()}`;
 }
 
-export async function createEicr() {
+const REFERENCE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
+const UNIQUE_VIOLATION = "23505";
+
+interface StoredAddress {
+  line1?: string;
+  line2?: string;
+  town?: string;
+  postcode?: string;
+}
+
+export interface CreateCertificateState {
+  error?: string;
+}
+
+/**
+ * Creates a certificate from the new-certificate dialog: number assigned at
+ * creation, optional job number, client and installation either picked from
+ * records or created inline, and engineer/QS assignment. Record details are
+ * copied into the certificate data so the editor starts pre-filled.
+ */
+export async function createCertificate(
+  _prev: CreateCertificateState,
+  formData: FormData
+): Promise<CreateCertificateState> {
   const { supabase, user, org } = await requireOrg();
-  const { data, error } = await supabase
+  const field = (name: string) => String(formData.get(name) ?? "").trim();
+
+  const reference = field("reference");
+  if (!reference) return { error: "The certificate needs a number" };
+  if (!REFERENCE_PATTERN.test(reference)) {
+    return { error: "Certificate numbers can only have letters, numbers, hyphens and underscores" };
+  }
+  const jobNumber = field("jobNumber") || null;
+
+  // Client: an existing record, a new one created inline, or none.
+  let customerId: string | null = null;
+  let clientPerson: { name?: string; email?: string; phone?: string; address?: StoredAddress } | undefined;
+  const clientMode = field("clientMode");
+  if (clientMode === "existing" && field("customerId")) {
+    const { data: customer, error } = await supabase
+      .from("customers")
+      .select("id, name, email, phone, address")
+      .eq("id", field("customerId"))
+      .single();
+    if (error) return { error: "Could not load the selected client" };
+    customerId = customer.id;
+    clientPerson = {
+      name: customer.name,
+      email: customer.email ?? undefined,
+      phone: customer.phone ?? undefined,
+      address: (customer.address ?? undefined) as StoredAddress | undefined,
+    };
+  } else if (clientMode === "new") {
+    const name = field("clientName");
+    if (!name) return { error: "Give the new client a name" };
+    const address: StoredAddress = {
+      line1: field("clientLine1") || undefined,
+      town: field("clientTown") || undefined,
+      postcode: field("clientPostcode") || undefined,
+    };
+    const { data: created, error } = await supabase
+      .from("customers")
+      .insert({
+        org_id: org.orgId,
+        name,
+        email: field("clientEmail") || null,
+        phone: field("clientPhone") || null,
+        address: toJson(address),
+      })
+      .select("id")
+      .single();
+    if (error) return { error: error.message };
+    customerId = created.id;
+    clientPerson = {
+      name,
+      email: field("clientEmail") || undefined,
+      phone: field("clientPhone") || undefined,
+      address: address.line1 ? address : undefined,
+    };
+  }
+
+  // Installation: an existing record, a new one, or the client's own address.
+  let propertyId: string | null = null;
+  let installationAddress: StoredAddress | undefined;
+  const installationMode = field("installationMode");
+  if (installationMode === "existing" && field("propertyId")) {
+    const { data: property, error } = await supabase
+      .from("properties")
+      .select("id, address")
+      .eq("id", field("propertyId"))
+      .single();
+    if (error) return { error: "Could not load the selected installation" };
+    propertyId = property.id;
+    installationAddress = (property.address ?? undefined) as StoredAddress | undefined;
+  } else if (installationMode === "new") {
+    const address: StoredAddress = {
+      line1: field("instLine1") || undefined,
+      line2: field("instLine2") || undefined,
+      town: field("instTown") || undefined,
+      postcode: field("instPostcode") || undefined,
+    };
+    if (!address.line1) return { error: "Give the new installation an address" };
+    const { data: created, error } = await supabase
+      .from("properties")
+      .insert({
+        org_id: org.orgId,
+        customer_id: customerId,
+        address: toJson(address),
+        postcode: address.postcode ?? null,
+      })
+      .select("id")
+      .single();
+    if (error) return { error: error.message };
+    propertyId = created.id;
+    installationAddress = address;
+  } else if (installationMode === "client-address") {
+    if (!clientPerson?.address?.line1) {
+      return { error: "The client has no address to use for the installation" };
+    }
+    const { data: created, error } = await supabase
+      .from("properties")
+      .insert({
+        org_id: org.orgId,
+        customer_id: customerId,
+        address: toJson(clientPerson.address),
+        postcode: clientPerson.address.postcode ?? null,
+      })
+      .select("id")
+      .single();
+    if (error) return { error: error.message };
+    propertyId = created.id;
+    installationAddress = clientPerson.address;
+  }
+
+  const data = {
+    ...emptyEicr(),
+    reference,
+    ...(clientPerson ? { client: clientPerson } : {}),
+    ...(installationAddress ? { installationAddress } : {}),
+  };
+
+  const { data: cert, error } = await supabase
     .from("certificates")
-    .insert({ org_id: org.orgId, kind: "EICR" as const, data: toJson(emptyEicr()), created_by: user.id })
+    .insert({
+      org_id: org.orgId,
+      kind: "EICR" as const,
+      reference,
+      job_number: jobNumber,
+      customer_id: customerId,
+      property_id: propertyId,
+      assigned_to: field("assignedTo") || user.id,
+      qs_member: field("qsMember") || null,
+      data: toJson(data),
+      created_by: user.id,
+    })
     .select("id")
     .single();
-  if (error) throw new Error(error.message);
-  redirect(`/certificates/${data.id}`);
+  if (error) {
+    if (error.code === UNIQUE_VIOLATION) {
+      return { error: `Certificate number ${reference} is already in use. Regenerate or pick another` };
+    }
+    return { error: error.message };
+  }
+  redirect(`/certificates/${cert.id}`);
 }
 
 export interface SaveResult {
@@ -61,7 +216,7 @@ export interface FlowResult {
 async function loadDraft(supabase: Awaited<ReturnType<typeof requireOrg>>["supabase"], id: string) {
   const { data: row, error } = await supabase
     .from("certificates")
-    .select("data, status, created_by")
+    .select("data, status, created_by, reference")
     .eq("id", id)
     .single();
   if (error) return { error: error.message } as const;
@@ -87,12 +242,13 @@ async function renderAndStorePdf(
   org: OrgContext,
   id: string,
   cert: Eicr,
-  issuedAtIso: string
+  issuedAtIso: string,
+  reference: string
 ): Promise<{ pdfPath?: string; error?: string }> {
   const buffer = await renderEicrPdfBuffer({
     cert,
     orgName: org.orgName,
-    reference: certReference(id),
+    reference,
     issuedAt: issuedAtIso.slice(0, 10),
   });
   const path = `${org.orgId}/certificates/${id}.pdf`;
@@ -167,8 +323,11 @@ export async function issueCertificate(id: string): Promise<FlowResult> {
   const gate = issueGate(cert);
   if (gate.error) return { error: gate.error, validation: gate.validation };
 
+  // Certificates created through the dialog carry their number from creation;
+  // the FC- fallback only covers rows that predate that flow.
+  const reference = row.reference ?? certReference(id);
   const issuedAt = new Date().toISOString();
-  const pdf = await renderAndStorePdf(supabase, org, id, cert, issuedAt);
+  const pdf = await renderAndStorePdf(supabase, org, id, cert, issuedAt, reference);
   if (pdf.error) return { error: pdf.error };
 
   const { error } = await supabase
@@ -177,7 +336,7 @@ export async function issueCertificate(id: string): Promise<FlowResult> {
       status: "issued" as const,
       issued_at: issuedAt,
       approved_by: user.id,
-      reference: certReference(id),
+      reference,
       pdf_path: pdf.pdfPath,
       validation: toJson(gate.validation),
     })
@@ -226,6 +385,9 @@ export async function uploadLegacyCertificate(formData: FormData): Promise<FlowR
   });
   if (error) {
     await supabase.storage.from("fieldcert").remove([path]);
+    if (error.code === UNIQUE_VIOLATION) {
+      return { error: `A certificate with the reference ${reference} already exists` };
+    }
     return { error: error.message };
   }
 

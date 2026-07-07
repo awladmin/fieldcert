@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  BookUser,
+  Building2,
   Code2,
   LayoutDashboard,
   LogOut,
@@ -29,6 +31,8 @@ import { Button } from "@/components/ui/button";
 const NAV = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard, adminOnly: false },
   { title: "Certificates", href: "/certificates", icon: ScrollText, adminOnly: false },
+  { title: "Clients", href: "/clients", icon: BookUser, adminOnly: false },
+  { title: "Installations", href: "/installations", icon: Building2, adminOnly: false },
   { title: "Team", href: "/team", icon: Users, adminOnly: true },
   { title: "API", href: "/developers", icon: Code2, adminOnly: true },
   { title: "Settings", href: "/settings", icon: Settings, adminOnly: true },
