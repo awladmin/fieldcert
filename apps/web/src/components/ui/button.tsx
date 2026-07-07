@@ -49,6 +49,9 @@ function Button({
   return (
     <ButtonPrimitive
       data-slot="button"
+      // A custom render element (Link, anchor) is not a native <button>;
+      // an explicit nativeButton in props still wins via the spread below.
+      nativeButton={props.render ? false : undefined}
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
     />
