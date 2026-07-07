@@ -1,9 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { emptyEicr, type Eicr } from "@fieldcert/cert-schemas";
+import {
+  emptyEicr,
+  INSPECTION_SCHEDULE,
+  type Eicr,
+  type ScheduleOutcome,
+} from "@fieldcert/cert-schemas";
 import { validateEicr } from "./validate";
 import { maxZsOhms } from "./tables/zs";
 
 const TODAY = "2026-07-07";
+
+/** Every fixed schedule item marked with the same outcome. */
+function fullSchedule(outcome: ScheduleOutcome = "ok"): Record<string, ScheduleOutcome> {
+  return Object.fromEntries(
+    INSPECTION_SCHEDULE.flatMap((s) => s.items.map((item) => [item.id, outcome]))
+  );
+}
 
 function baseCert(): Eicr {
   return {
@@ -17,6 +29,7 @@ function baseCert(): Eicr {
     overallAssessment: "satisfactory",
     inspector: { name: "Dan Jordan" },
     inspectorSignedAt: "2026-07-01",
+    inspectionSchedule: fullSchedule(),
   };
 }
 
@@ -71,6 +84,71 @@ describe("validateEicr: assessment consistency", () => {
     const result = validateEicr(cert, { today: TODAY });
     const rules = result.issues.map((i) => i.rule);
     expect(rules.filter((r) => r === "eicr.observations.complete")).toHaveLength(2);
+  });
+});
+
+describe("validateEicr: inspection schedule", () => {
+  it("an empty schedule blocks issue with one error per section", () => {
+    const cert: Eicr = { ...baseCert(), inspectionSchedule: {} };
+    const result = validateEicr(cert, { today: TODAY, stage: "issue" });
+    const found = result.issues.filter((i) => i.rule === "eicr.schedule.complete");
+    expect(found).toHaveLength(INSPECTION_SCHEDULE.length);
+    expect(result.issuable).toBe(false);
+  });
+
+  it("does not demand schedule completion at draft stage", () => {
+    const cert: Eicr = { ...baseCert(), inspectionSchedule: {} };
+    const result = validateEicr(cert, { today: TODAY, stage: "draft" });
+    expect(result.issues.filter((i) => i.rule === "eicr.schedule.complete")).toHaveLength(0);
+  });
+
+  it("rejects satisfactory verdict when a schedule item is C2", () => {
+    const cert: Eicr = {
+      ...baseCert(),
+      inspectionSchedule: { ...fullSchedule(), "4.10": "C2" },
+    };
+    const result = validateEicr(cert, { today: TODAY });
+    const found = result.issues.find((i) => i.rule === "eicr.assessment.consistency");
+    expect(found?.severity).toBe("error");
+    expect(found?.message).toContain("4.10");
+  });
+
+  it("requires an observation for every adverse schedule item", () => {
+    const cert: Eicr = {
+      ...baseCert(),
+      overallAssessment: "unsatisfactory",
+      inspectionSchedule: { ...fullSchedule(), "4.10": "C2" },
+    };
+    const unlinked = validateEicr(cert, { today: TODAY });
+    expect(
+      unlinked.issues.some((i) => i.rule === "eicr.schedule.observation-link" && i.field === "inspectionSchedule.4.10")
+    ).toBe(true);
+
+    const linked = validateEicr(
+      {
+        ...cert,
+        observations: [{ id: "o1", description: "No RCD test notice", code: "C2", itemNumber: "4.10" }],
+      },
+      { today: TODAY }
+    );
+    expect(linked.issues.filter((i) => i.rule === "eicr.schedule.observation-link")).toHaveLength(0);
+  });
+
+  it("a fully marked schedule with NA outcomes is issuable", () => {
+    const cert: Eicr = { ...baseCert(), inspectionSchedule: fullSchedule("NA") };
+    const result = validateEicr(cert, { today: TODAY, stage: "issue" });
+    expect(result.issues).toEqual([]);
+  });
+
+  it("custom schedule items need an outcome once described", () => {
+    const cert: Eicr = {
+      ...baseCert(),
+      customScheduleItems: [{ id: "x1", description: "Battery storage isolation" }],
+    };
+    const result = validateEicr(cert, { today: TODAY, stage: "issue" });
+    expect(
+      result.issues.some((i) => i.rule === "eicr.schedule.complete" && i.field === "customScheduleItems[0].outcome")
+    ).toBe(true);
   });
 });
 

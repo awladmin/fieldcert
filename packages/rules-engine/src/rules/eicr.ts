@@ -1,6 +1,24 @@
-import type { Eicr } from "@fieldcert/cert-schemas";
+import { INSPECTION_SCHEDULE, type Eicr } from "@fieldcert/cert-schemas";
 import type { EicrRule, RuleContext, ValidationIssue } from "../types";
 import { maxZsOhms, MEASURED_ZS_FACTOR } from "../tables/zs";
+
+const ADVERSE_CODES = new Set(["C1", "C2", "FI"]);
+
+/** Every C1/C2/FI recorded anywhere on the report: observations plus schedule. */
+function adverseFindings(cert: Eicr): { observations: boolean; scheduleItems: string[] } {
+  const scheduleItems = [
+    ...Object.entries(cert.inspectionSchedule ?? {})
+      .filter(([, outcome]) => ADVERSE_CODES.has(outcome))
+      .map(([itemId]) => itemId),
+    ...(cert.customScheduleItems ?? [])
+      .filter((item) => item.outcome && ADVERSE_CODES.has(item.outcome))
+      .map((item) => item.id),
+  ];
+  return {
+    observations: cert.observations.some((o) => o.code && ADVERSE_CODES.has(o.code)),
+    scheduleItems,
+  };
+}
 
 function issue(
   rule: string,
@@ -76,14 +94,18 @@ const assessmentConsistency: EicrRule = {
   layer: "statutory",
   check(cert) {
     if (!cert.overallAssessment) return [];
-    const hasDangerous = cert.observations.some((o) => o.code === "C1" || o.code === "C2" || o.code === "FI");
+    const adverse = adverseFindings(cert);
+    const hasDangerous = adverse.observations || adverse.scheduleItems.length > 0;
     if (hasDangerous && cert.overallAssessment === "satisfactory") {
+      const source = adverse.observations
+        ? "observations"
+        : `inspection schedule item${adverse.scheduleItems.length === 1 ? "" : "s"} ${adverse.scheduleItems.join(", ")}`;
       return [
         issue(
           "eicr.assessment.consistency",
           "overallAssessment",
           "error",
-          "There are C1, C2 or FI observations, so the overall assessment must be Unsatisfactory (BS 7671)"
+          `There are C1, C2 or FI outcomes in the ${source}, so the overall assessment must be Unsatisfactory (BS 7671)`
         ),
       ];
     }
@@ -93,11 +115,72 @@ const assessmentConsistency: EicrRule = {
           "eicr.assessment.consistency",
           "overallAssessment",
           "warning",
-          "Assessment is Unsatisfactory but no C1, C2 or FI observations are recorded. Add the observation that justifies it"
+          "Assessment is Unsatisfactory but no C1, C2 or FI outcomes are recorded. Add the observation that justifies it"
         ),
       ];
     }
     return [];
+  },
+};
+
+/**
+ * A C1/C2/FI outcome on a schedule item must be backed by an observation
+ * carrying that item number, so the defect is described and coded on the
+ * report rather than existing only as a tick in a grid.
+ */
+const scheduleObservationLink: EicrRule = {
+  id: "eicr.schedule.observation-link",
+  layer: "statutory",
+  check(cert) {
+    const adverse = adverseFindings(cert);
+    const referenced = new Set(cert.observations.map((o) => o.itemNumber).filter(Boolean));
+    return adverse.scheduleItems
+      .filter((itemId) => !referenced.has(itemId))
+      .map((itemId) =>
+        issue(
+          "eicr.schedule.observation-link",
+          `inspectionSchedule.${itemId}`,
+          "error",
+          `Schedule item ${itemId} is marked ${cert.inspectionSchedule?.[itemId] ?? "adverse"} but has no observation describing the defect`
+        )
+      );
+  },
+};
+
+/** Every fixed schedule item needs an outcome before the report can be issued. */
+const scheduleComplete: EicrRule = {
+  id: "eicr.schedule.complete",
+  layer: "statutory",
+  check(cert, ctx) {
+    if (ctx.stage !== "issue") return [];
+    const issues: ValidationIssue[] = [];
+    const outcomes = cert.inspectionSchedule ?? {};
+    for (const section of INSPECTION_SCHEDULE) {
+      const missing = section.items.filter((item) => !outcomes[item.id]);
+      if (missing.length > 0) {
+        issues.push(
+          issue(
+            "eicr.schedule.complete",
+            `inspectionSchedule.section${section.number}`,
+            "error",
+            `Inspection schedule section ${section.number} has ${missing.length} item${missing.length === 1 ? "" : "s"} without an outcome`
+          )
+        );
+      }
+    }
+    (cert.customScheduleItems ?? []).forEach((item, i) => {
+      if (item.description && !item.outcome) {
+        issues.push(
+          issue(
+            "eicr.schedule.complete",
+            `customScheduleItems[${i}].outcome`,
+            "error",
+            "Custom schedule item needs an outcome"
+          )
+        );
+      }
+    });
+    return issues;
   },
 };
 
@@ -258,6 +341,8 @@ export const eicrStatutoryRules: EicrRule[] = [
   completeness,
   observationsComplete,
   assessmentConsistency,
+  scheduleObservationLink,
+  scheduleComplete,
   zsWithinLimits,
   rcdTimes,
   insulationResistance,

@@ -9,6 +9,7 @@ import {
   person,
   rcdType,
 } from "./common";
+import { scheduleOutcome } from "./inspection-schedule";
 
 /**
  * Electrical Installation Condition Report — modelled on the BS 7671
@@ -135,13 +136,46 @@ export const circuitTestResults = z.object({
 });
 export type CircuitTestResults = z.infer<typeof circuitTestResults>;
 
+/** PASS / FAIL / LIM (limitation) / N/A confirmation outcome used on boards. */
+export const confirmOutcome = z.enum(["pass", "fail", "lim", "na"]);
+export type ConfirmOutcome = z.infer<typeof confirmOutcome>;
+
+export const boardMainSwitch = z.object({
+  bsStandard: z.string().optional(),
+  voltageV: z.number().optional(),
+  ratingA: z.number().optional(),
+  /** Prospective fault current rating of the device, kA */
+  ipfRatingKa: z.number().optional(),
+  /** Where the main switch is an RCD */
+  rcdIDeltaNMa: z.number().optional(),
+  rcdTripTimeMs: z.number().optional(),
+});
+export type BoardMainSwitch = z.infer<typeof boardMainSwitch>;
+
 export const distributionBoard = z.object({
   id: z.string(),
   designation: z.string().optional(),
   location: z.string().optional(),
+  manufacturer: z.string().optional(),
+  /** What feeds this board, e.g. "Origin" or "DB1 way 4" */
+  suppliedFrom: z.string().optional(),
+  numberOfPhases: z.number().optional(),
+  supplyPolarityConfirmed: confirmOutcome.optional(),
+  phaseSequenceConfirmed: confirmOutcome.optional(),
   /** Measured Zdb at the board, ohms */
   zDbOhms: z.number().optional(),
   prospectiveFaultCurrentKa: z.number().optional(),
+  mainSwitch: boardMainSwitch.optional(),
+  spd: z
+    .object({
+      /** e.g. "Type 1", "Type 2", "Type 1+2" */
+      type: z.string().optional(),
+      statusConfirmed: confirmOutcome.optional(),
+    })
+    .optional(),
+  notes: z.string().optional(),
+  /** Engineer has marked this board's testing complete */
+  done: z.boolean().optional(),
   circuits: z.array(circuitDetails).default([]),
   testResults: z.array(circuitTestResults).default([]),
 });
@@ -172,6 +206,22 @@ export const eicr = z.object({
 
   observations: z.array(observation).default([]),
   boards: z.array(distributionBoard).default([]),
+
+  /** Inspection schedule outcomes keyed by item id (e.g. "4.10" -> "C2") */
+  inspectionSchedule: z.record(z.string(), scheduleOutcome).default({}),
+  /**
+   * Section 8 of the schedule: prosumer's low voltage installation items are
+   * installation-specific, so they are free entries rather than fixed items.
+   */
+  customScheduleItems: z
+    .array(
+      z.object({
+        id: z.string(),
+        description: z.string().optional(),
+        outcome: scheduleOutcome.optional(),
+      })
+    )
+    .default([]),
 
   overallAssessment: z.enum(["satisfactory", "unsatisfactory"]).optional(),
 

@@ -106,6 +106,82 @@ export function NumberField({
   );
 }
 
+/**
+ * Segmented single-choice chips: the fastest way to record an outcome with a
+ * thumb on site. Clicking the active chip clears it.
+ */
+export function ChipGroup({
+  label,
+  value,
+  onChange,
+  options,
+  issues = [],
+  className,
+  size = "md",
+}: BaseProps & {
+  value: string | undefined;
+  onChange: (value: string | undefined) => void;
+  options: Array<{ value: string; label: string; tone?: "danger" | "warn" | "ok" }>;
+  size?: "sm" | "md";
+}) {
+  return (
+    <div className={cn("flex flex-col gap-2", className)}>
+      {label && <Label className="text-sm font-medium">{label}</Label>}
+      <div className="flex flex-wrap gap-1">
+        {options.map((opt) => {
+          const active = value === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              aria-pressed={active}
+              onClick={() => onChange(active ? undefined : opt.value)}
+              className={cn(
+                "rounded-md border font-semibold transition-colors",
+                size === "sm" ? "px-2 py-1 text-xs" : "px-3 py-2 text-sm",
+                active
+                  ? opt.tone === "danger"
+                    ? "border-destructive bg-destructive text-white"
+                    : opt.tone === "warn"
+                      ? "border-amber-500 bg-amber-500 text-white"
+                      : "border-primary bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:border-foreground/40 hover:text-foreground"
+              )}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
+      <FieldIssues issues={issues} />
+    </div>
+  );
+}
+
+/** One-tap common values shown under an input, e.g. 230 V or Copper. */
+export function ValueChips({
+  values,
+  onPick,
+}: {
+  values: Array<{ label: string; value: string | number }>;
+  onPick: (value: string | number) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-1">
+      {values.map((v) => (
+        <button
+          key={v.label}
+          type="button"
+          onClick={() => onPick(v.value)}
+          className="border-input text-muted-foreground hover:border-foreground/40 hover:text-foreground rounded-md border px-2 py-0.5 text-xs font-medium transition-colors"
+        >
+          {v.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function SelectField({
   label,
   value,

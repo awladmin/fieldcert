@@ -15,12 +15,13 @@ import {
 } from "@/actions/certificates";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { StatusBadge } from "@/components/status-badge";
 import { cn } from "@/lib/utils";
-import type { BoardScan, ObservationDraft } from "@/lib/ai/extract";
-import { DraftObservationButton, ScanBoardButton } from "./ai-buttons";
-import { NumberField, SelectField, TextField, FieldIssues } from "./fields";
+import type { ObservationDraft } from "@/lib/ai/extract";
+import { DraftObservationButton } from "./ai-buttons";
+import { BoardsSection } from "./boards-section";
+import { ScheduleSection } from "./schedule-section";
+import { NumberField, SelectField, TextField } from "./fields";
 
 const OBSERVATION_CODES = [
   { value: "C1", label: "C1: Danger present" },
@@ -32,7 +33,7 @@ const OBSERVATION_CODES = [
 const EARTHING = ["TN-S", "TN-C-S", "TT", "IT"].map((v) => ({ value: v, label: v }));
 
 /** Rules that only make sense once the engineer tries to issue. Hidden inline until then. */
-const ISSUE_STAGE_RULES = new Set(["eicr.completeness", "eicr.polarity.confirmed"]);
+const ISSUE_STAGE_RULES = new Set(["eicr.completeness", "eicr.polarity.confirmed", "eicr.schedule.complete"]);
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
@@ -164,41 +165,6 @@ export function EicrBuilder({
     });
   }
 
-  function addCircuit() {
-    update((d) => {
-      if (d.boards.length === 0) {
-        d.boards.push({ id: crypto.randomUUID(), designation: "DB1", circuits: [], testResults: [] });
-      }
-      const board = d.boards[0]!;
-      const circuitId = crypto.randomUUID();
-      board.circuits.push({ id: circuitId, circuitNumber: String(board.circuits.length + 1) });
-      board.testResults.push({ circuitId });
-    });
-  }
-
-  function applyBoardScan(scan: BoardScan) {
-    update((d) => {
-      if (d.boards.length === 0) {
-        d.boards.push({ id: crypto.randomUUID(), designation: "DB1", circuits: [], testResults: [] });
-      }
-      const board = d.boards[0]!;
-      if (scan.boardDesignation) board.designation = scan.boardDesignation;
-      for (const c of scan.circuits) {
-        const circuitId = crypto.randomUUID();
-        board.circuits.push({
-          id: circuitId,
-          circuitNumber: c.circuitNumber || String(board.circuits.length + 1),
-          description: c.description || undefined,
-          ocpd: {
-            curve: c.curve ?? undefined,
-            ratingA: c.ratingA ?? undefined,
-          },
-        });
-        board.testResults.push({ circuitId });
-      }
-    });
-  }
-
   function applyObservationDraft(draft: ObservationDraft) {
     update((d) => {
       d.observations.push({
@@ -209,15 +175,14 @@ export function EicrBuilder({
     });
   }
 
-  const board = cert.boards[0];
-
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-6">
       {/* Sticky summary bar: state, live validation counts, actions */}
       <div className="bg-background/95 sticky top-0 z-10 -mx-2 rounded-xl border px-4 py-3 shadow-sm backdrop-blur">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <h1 className="text-xl font-bold">EICR</h1>
+            <h1 className="text-xl font-bold">{cert.reference ?? "EICR"}</h1>
+            {cert.reference && <span className="text-muted-foreground text-sm">EICR</span>}
             <StatusBadge status={status} />
             {!readOnly && (
               <span
@@ -392,137 +357,22 @@ export function EicrBuilder({
 
         <Section
           part="Part 3"
-          title={`Circuits${board?.designation ? ` (${board.designation})` : ""}`}
-          description="Each circuit with its protective device and test results. Zs is checked live against BS 7671 Table 41.3."
-          action={
-            <div className="flex items-center gap-2">
-              <ScanBoardButton onScan={applyBoardScan} disabled={readOnly} />
-              <Button type="button" variant="outline" onClick={addCircuit}>
-                <Plus className="size-4" /> Add circuit
-              </Button>
-            </div>
-          }
+          title="Boards and circuits"
+          description="Each consumer unit or distribution board with its main switch, SPD and circuit test results. Zs is checked live against BS 7671 Table 41.3."
         >
-          {!board || board.circuits.length === 0 ? (
-            <p className="text-muted-foreground py-4 text-center">
-              No circuits yet. Photograph the board with Scan board, or add circuits by hand.
-            </p>
-          ) : (
-            <div className="flex flex-col gap-4">
-              {board.circuits.map((circuit, ci) => {
-                const ti = board.testResults.findIndex((t) => t.circuitId === circuit.id);
-                const tr = ti >= 0 ? board.testResults[ti] : undefined;
-                const zsIssues = issuesFor(`boards[0].testResults[${ti}].zsOhms`);
-                const irIssues = issuesFor(`boards[0].testResults[${ti}].insulationResistance.liveEarthMohm`);
-                const rcdIssues = issuesFor(`boards[0].testResults[${ti}].rcdOperatingTimeMs`);
-                const polarityIssues = issuesFor(`boards[0].testResults[${ti}].polarityConfirmed`);
-                return (
-                  <div key={circuit.id} className="rounded-xl border p-4">
-                    <div className="mb-4 flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <span className="bg-primary/10 text-primary flex size-9 items-center justify-center rounded-lg text-sm font-bold">
-                          {circuit.circuitNumber || ci + 1}
-                        </span>
-                        <input
-                          className="border-input h-11 w-full min-w-40 rounded-lg border bg-transparent px-3 text-base"
-                          value={circuit.description ?? ""}
-                          placeholder="Circuit description, e.g. Kitchen sockets"
-                          onChange={(e) =>
-                            update((d) => { d.boards[0]!.circuits[ci]!.description = e.target.value || undefined; })
-                          }
-                        />
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        aria-label="Remove circuit"
-                        onClick={() =>
-                          update((d) => {
-                            const b = d.boards[0]!;
-                            b.circuits = b.circuits.filter((c) => c.id !== circuit.id);
-                            b.testResults = b.testResults.filter((t) => t.circuitId !== circuit.id);
-                          })
-                        }
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </div>
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-                      <SelectField
-                        label="Breaker type"
-                        value={circuit.ocpd?.curve}
-                        options={[
-                          { value: "B", label: "Type B" },
-                          { value: "C", label: "Type C" },
-                          { value: "D", label: "Type D" },
-                        ]}
-                        onChange={(v) =>
-                          update((d) => {
-                            const c = d.boards[0]!.circuits[ci]!;
-                            c.ocpd = { ...c.ocpd, curve: v as "B" | "C" | "D" | undefined };
-                          })
-                        }
-                      />
-                      <NumberField
-                        label="Rating"
-                        unit="A"
-                        value={circuit.ocpd?.ratingA}
-                        onChange={(v) =>
-                          update((d) => {
-                            const c = d.boards[0]!.circuits[ci]!;
-                            c.ocpd = { ...c.ocpd, ratingA: v };
-                          })
-                        }
-                      />
-                      <NumberField
-                        label="Zs"
-                        unit="ohms"
-                        step="0.01"
-                        value={tr?.zsOhms}
-                        issues={zsIssues}
-                        onChange={(v) => update((d) => { d.boards[0]!.testResults[ti]!.zsOhms = v; })}
-                      />
-                      <NumberField
-                        label="IR live to earth"
-                        unit="Mohm"
-                        step="0.1"
-                        value={tr?.insulationResistance?.liveEarthMohm}
-                        issues={irIssues}
-                        onChange={(v) =>
-                          update((d) => {
-                            const t = d.boards[0]!.testResults[ti]!;
-                            t.insulationResistance = { ...t.insulationResistance, liveEarthMohm: v };
-                          })
-                        }
-                      />
-                      <NumberField
-                        label="RCD trip time"
-                        unit="ms"
-                        value={tr?.rcdOperatingTimeMs}
-                        issues={rcdIssues}
-                        onChange={(v) => update((d) => { d.boards[0]!.testResults[ti]!.rcdOperatingTimeMs = v; })}
-                      />
-                    </div>
-                    <label className="mt-4 flex w-fit cursor-pointer items-center gap-3 rounded-lg border px-4 py-3">
-                      <Checkbox
-                        checked={tr?.polarityConfirmed ?? false}
-                        onCheckedChange={(checked) =>
-                          update((d) => { d.boards[0]!.testResults[ti]!.polarityConfirmed = checked === true ? true : undefined; })
-                        }
-                      />
-                      <span className="text-sm font-medium">Polarity confirmed</span>
-                    </label>
-                    <FieldIssues issues={polarityIssues} />
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          <BoardsSection cert={cert} update={update} issuesFor={issuesFor} readOnly={readOnly} />
         </Section>
 
         <Section
           part="Part 4"
+          title="Inspection schedule"
+          description="The BS 7671 condition report checklist. Every item needs an outcome before the report can be issued; C1, C2 and FI items must be backed by an observation."
+        >
+          <ScheduleSection cert={cert} update={update} issuesFor={issuesFor} />
+        </Section>
+
+        <Section
+          part="Part 5"
           title="Observations"
           description="Defects and departures found during the inspection, each with its classification code."
           action={
@@ -541,7 +391,13 @@ export function EicrBuilder({
           ) : (
             <div className="flex flex-col gap-4">
               {cert.observations.map((obs, oi) => (
-                <div key={obs.id} className="grid gap-4 rounded-xl border p-4 sm:grid-cols-[1fr_230px_auto]">
+                <div key={obs.id} className="grid gap-4 rounded-xl border p-4 sm:grid-cols-[110px_1fr_230px_auto]">
+                  <TextField
+                    label="Item no"
+                    placeholder="e.g. 4.10"
+                    value={obs.itemNumber}
+                    onChange={(v) => update((d) => { d.observations[oi]!.itemNumber = v; })}
+                  />
                   <TextField
                     label="Observation"
                     placeholder="e.g. No RCD protection on socket circuits"
@@ -574,7 +430,7 @@ export function EicrBuilder({
           )}
         </Section>
 
-        <Section part="Part 5" title="Summary and declaration" description="The overall verdict and who is signing it off.">
+        <Section part="Part 6" title="Summary and declaration" description="The overall verdict and who is signing it off.">
           <div className="grid gap-5 sm:grid-cols-2">
             <SelectField
               label="Overall assessment"
