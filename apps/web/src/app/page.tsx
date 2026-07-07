@@ -459,12 +459,14 @@ export default async function HomePage() {
                 </Button>
               </CardContent>
             </Card>
-            <Card className="border-primary relative border-2 shadow-lg">
-              <Badge className="bg-primary text-primary-foreground absolute -top-3 left-1/2 -translate-x-1/2 font-semibold">
-                Recommended
-              </Badge>
+            <Card className="border-primary border-2 shadow-lg">
               <CardHeader>
-                <CardTitle className="text-lg">Business</CardTitle>
+                <div className="flex items-center justify-between gap-2">
+                  <CardTitle className="text-lg">Business</CardTitle>
+                  <Badge className="bg-primary text-primary-foreground font-semibold">
+                    Recommended
+                  </Badge>
+                </div>
                 <p className="text-4xl font-extrabold tabular-nums">
                   £12
                   <span className="text-muted-foreground text-sm font-normal">/engineer/month + VAT</span>
