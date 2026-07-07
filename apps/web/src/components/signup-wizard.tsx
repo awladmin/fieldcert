@@ -2,7 +2,16 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { Building2, CircleUser } from "lucide-react";
+import {
+  ArrowRight,
+  Building2,
+  CircleUser,
+  Clock,
+  FileCheck2,
+  ScanLine,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react";
 import { requestLoginCode, verifySignupCode, type OtpFormState } from "@/actions/auth";
 import { Logo } from "@/components/logo";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -20,14 +29,21 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
-type Step = "type" | "name" | "company" | "email" | "code";
+type Step = "welcome" | "type" | "name" | "company" | "email" | "code";
 type AccountType = "individual" | "business";
 
-const STEPS: Step[] = ["type", "name", "company", "email", "code"];
+/** Form steps for the progress bar; the welcome pitch screen sits before them. */
+const STEPS: Exclude<Step, "welcome">[] = ["type", "name", "company", "email", "code"];
 /** Progress moves from the very first tap; the account comes last. */
-const PROGRESS: Record<Step, number> = { type: 15, name: 30, company: 45, email: 60, code: 75 };
+const PROGRESS: Record<Exclude<Step, "welcome">, number> = {
+  type: 15,
+  name: 30,
+  company: 45,
+  email: 60,
+  code: 75,
+};
 
-const COPY: Record<Step, { title: string; description: string }> = {
+const COPY: Record<Exclude<Step, "welcome">, { title: string; description: string }> = {
   type: { title: "How do you work?", description: "One tap. We shape everything else around this." },
   name: { title: "What should we call you?", description: "This goes on your certificates as the inspector name." },
   company: { title: "Your business name", description: "This appears on every certificate you issue." },
@@ -35,8 +51,16 @@ const COPY: Record<Step, { title: string; description: string }> = {
   code: { title: "Check your email", description: "Enter the code and your account is ready." },
 };
 
+const BENEFITS = [
+  { icon: ShieldCheck, text: "Validation built on BS 7671. A certificate with errors cannot be issued." },
+  { icon: ScanLine, text: "Photograph the board and the AI fills the circuit schedule for you." },
+  { icon: Sparkles, text: "AI drafts observation wording and suggests the classification code." },
+  { icon: FileCheck2, text: "Branded PDF certificates with share links your clients can open." },
+  { icon: Clock, text: "30 days free with everything included. No card needed." },
+];
+
 export function SignupWizard() {
-  const [step, setStep] = useState<Step>("type");
+  const [step, setStep] = useState<Step>("welcome");
   const [accountType, setAccountType] = useState<AccountType | null>(null);
   const [name, setName] = useState("");
   const [companyName, setCompanyName] = useState("");
@@ -45,7 +69,7 @@ export function SignupWizard() {
   const [error, setError] = useState<string | undefined>();
   const [pending, startTransition] = useTransition();
 
-  const stepIndex = STEPS.indexOf(step);
+  const stepIndex = step === "welcome" ? -1 : STEPS.indexOf(step);
 
   function chooseType(type: AccountType) {
     setAccountType(type);
@@ -99,19 +123,48 @@ export function SignupWizard() {
           <Link href="/" aria-label="FieldCert home" className="mx-auto mb-4 w-fit">
             <Logo />
           </Link>
-          <div className="mb-3 flex flex-col gap-2">
-            <div className="text-muted-foreground flex items-center justify-between text-xs font-medium">
-              <span>
-                Step {stepIndex + 1} of {STEPS.length}
-              </span>
-              <span className="text-primary">{PROGRESS[step]}% there</span>
-            </div>
-            <Progress value={PROGRESS[step]} className="h-2" />
-          </div>
-          <CardTitle>{COPY[step].title}</CardTitle>
-          <CardDescription>{COPY[step].description}</CardDescription>
+          {step === "welcome" ? (
+            <>
+              <CardTitle className="text-center text-2xl text-balance">
+                The certificate app that has your back
+              </CardTitle>
+              <CardDescription className="text-center">
+                Less paperwork, no comebacks. Here is what FieldCert does for you:
+              </CardDescription>
+            </>
+          ) : (
+            <>
+              <div className="mb-3 flex flex-col gap-2">
+                <div className="text-muted-foreground flex items-center justify-between text-xs font-medium">
+                  <span>
+                    Step {stepIndex + 1} of {STEPS.length}
+                  </span>
+                  <span className="text-primary">{PROGRESS[step]}% there</span>
+                </div>
+                <Progress value={PROGRESS[step]} className="h-2" />
+              </div>
+              <CardTitle>{COPY[step].title}</CardTitle>
+              <CardDescription>{COPY[step].description}</CardDescription>
+            </>
+          )}
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
+          {step === "welcome" && (
+            <>
+              <ul className="flex flex-col gap-2.5">
+                {BENEFITS.map((b) => (
+                  <li key={b.text} className="bg-muted/50 flex items-start gap-3 rounded-xl p-3.5">
+                    <b.icon className="text-primary mt-0.5 size-5 shrink-0" />
+                    <span className="text-sm">{b.text}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-center text-sm font-semibold">Less paperwork. No comebacks.</p>
+              <Button className="h-12 text-base" onClick={() => setStep("type")}>
+                Let&apos;s get started <ArrowRight className="size-4" />
+              </Button>
+            </>
+          )}
           {step === "type" && (
             <div className="grid grid-cols-2 gap-3">
               <button
