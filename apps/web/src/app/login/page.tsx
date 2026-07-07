@@ -6,7 +6,7 @@ export const metadata = { title: "Sign in | FieldCert" };
 export default function LoginPage() {
   return (
     <Suspense>
-      <AuthCard />
+      <AuthCard mode="signin" />
     </Suspense>
   );
 }

@@ -22,12 +22,9 @@ export default async function OnboardingPage() {
 
   if (membership?.orgs?.subscription_status === "active") redirect("/dashboard");
 
-  let step: OnboardingStep = "profile";
-  if (membership?.orgs) {
-    step = "billing";
-  } else if (profile?.full_name) {
-    step = "org";
-  }
+  // New users always start at the profile step: even with the name known from
+  // signup it holds the individual-or-business choice. Prefilled, so it is quick.
+  const step: OnboardingStep = membership?.orgs ? "billing" : "profile";
 
   return (
     <OnboardingWizard

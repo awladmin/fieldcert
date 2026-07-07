@@ -1,6 +1,12 @@
-import { redirect } from "next/navigation";
+import { Suspense } from "react";
+import { AuthCard } from "@/components/auth-card";
 
-// OTP sign-in doubles as signup: one flow for both.
+export const metadata = { title: "Create your account | FieldCert" };
+
 export default function SignupPage() {
-  redirect("/login");
+  return (
+    <Suspense>
+      <AuthCard mode="signup" />
+    </Suspense>
+  );
 }

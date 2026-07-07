@@ -23,9 +23,10 @@ import { Input } from "@/components/ui/input";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { Label } from "@/components/ui/label";
 
-export function AuthCard() {
+export function AuthCard({ mode }: { mode: "signin" | "signup" }) {
   const searchParams = useSearchParams();
   const linkError = searchParams.get("error") === "link";
+  const isSignup = mode === "signup";
 
   const [requestState, requestAction, requesting] = useActionState<OtpFormState, FormData>(
     requestLoginCode,
@@ -47,8 +48,12 @@ export function AuthCard() {
           <Link href="/" aria-label="FieldCert home" className="mx-auto mb-2 w-fit">
             <Logo />
           </Link>
-          <CardTitle>Sign in to FieldCert</CardTitle>
-          <CardDescription>Certificates, validated before they&apos;re issued.</CardDescription>
+          <CardTitle>{isSignup ? "Create your FieldCert account" : "Sign in to FieldCert"}</CardTitle>
+          <CardDescription>
+            {isSignup
+              ? "Two minutes from here to your first validated certificate."
+              : "Welcome back."}
+          </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {linkError && (
@@ -61,21 +66,40 @@ export function AuthCard() {
 
           {!sent ? (
             <form action={requestAction} className="flex flex-col gap-4">
+              {isSignup && (
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="signup-name">Your name</Label>
+                  <Input
+                    id="signup-name"
+                    name="fullName"
+                    autoComplete="name"
+                    placeholder="e.g. Dan Jordan"
+                    className="h-11"
+                    required
+                  />
+                </div>
+              )}
               <div className="flex flex-col gap-2">
                 <Label htmlFor="otp-email">Email</Label>
-                <Input id="otp-email" name="email" type="email" autoComplete="email" required />
+                <Input
+                  id="otp-email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  className="h-11"
+                  required
+                />
               </div>
               {error && (
                 <Alert variant="destructive">
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
-              <Button type="submit" disabled={requesting}>
-                {requesting ? "Sending…" : "Email me a sign-in code"}
+              <Button type="submit" className="h-11" disabled={requesting}>
+                {requesting ? "Sending" : isSignup ? "Create account" : "Email me a sign-in code"}
               </Button>
               <p className="text-muted-foreground text-xs">
-                No password needed: we email you a one-time code. New here? This also creates
-                your account.
+                No password needed: we email you a one-time code.
               </p>
             </form>
           ) : (
@@ -99,11 +123,29 @@ export function AuthCard() {
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
-              <Button type="submit" disabled={verifying}>
-                {verifying ? "Checking…" : "Verify code"}
+              <Button type="submit" className="h-11" disabled={verifying}>
+                {verifying ? "Checking" : "Verify code"}
               </Button>
             </form>
           )}
+
+          <p className="text-muted-foreground text-center text-sm">
+            {isSignup ? (
+              <>
+                Already have an account?{" "}
+                <Link className="text-foreground underline" href="/login">
+                  Sign in
+                </Link>
+              </>
+            ) : (
+              <>
+                New to FieldCert?{" "}
+                <Link className="text-foreground underline" href="/signup">
+                  Create an account
+                </Link>
+              </>
+            )}
+          </p>
 
           {process.env.NODE_ENV === "development" && (
             <form action={devSignIn}>

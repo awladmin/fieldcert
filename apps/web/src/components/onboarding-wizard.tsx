@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +23,9 @@ export type OnboardingStep = "profile" | "org" | "billing";
 type AccountType = "individual" | "business";
 
 const STEPS: OnboardingStep[] = ["profile", "org", "billing"];
+
+/** Signing up already earns 20%: momentum from the first screen. */
+const PROGRESS: Record<OnboardingStep, number> = { profile: 20, org: 55, billing: 85 };
 
 export function OnboardingWizard({
   initialStep,
@@ -81,20 +85,14 @@ export function OnboardingWizard({
     <main className="flex min-h-screen items-center justify-center p-4">
       <Card className="w-full max-w-lg">
         <CardHeader>
-          <div className="text-muted-foreground mb-2 flex items-center gap-2 text-xs">
-            {STEPS.map((s, i) => (
-              <span key={s} className="flex items-center gap-2">
-                <span
-                  className={cn(
-                    "flex size-5 items-center justify-center rounded-full text-[10px] font-semibold",
-                    i <= stepIndex ? "bg-primary text-primary-foreground" : "bg-muted"
-                  )}
-                >
-                  {i + 1}
-                </span>
-                {i < STEPS.length - 1 && <span className="bg-border h-px w-6" />}
+          <div className="mb-3 flex flex-col gap-2">
+            <div className="text-muted-foreground flex items-center justify-between text-xs font-medium">
+              <span>
+                Step {stepIndex + 1} of {STEPS.length}
               </span>
-            ))}
+              <span className="text-primary">{PROGRESS[step]}% there</span>
+            </div>
+            <Progress value={PROGRESS[step]} className="h-2" />
           </div>
           <CardTitle>
             {step === "profile" && "Welcome to FieldCert"}

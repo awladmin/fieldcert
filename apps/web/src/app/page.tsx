@@ -66,7 +66,7 @@ export default async function HomePage() {
             ) : (
               <>
                 <Button variant="ghost" render={<Link href="/login" />}>Log in</Button>
-                <Button render={<Link href="/login" />}>Start free</Button>
+                <Button render={<Link href="/signup" />}>Start free</Button>
               </>
             )}
           </div>
@@ -90,7 +90,7 @@ export default async function HomePage() {
                 slow RCD, C1 on a satisfactory report: it gets caught on site, not in an audit.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-3">
-                <Button size="lg" className="h-12 px-7 text-base" render={<Link href="/login" />}>
+                <Button size="lg" className="h-12 px-7 text-base" render={<Link href="/signup" />}>
                   Start free
                 </Button>
                 <Button
@@ -103,7 +103,7 @@ export default async function HomePage() {
                 </Button>
               </div>
               <p className="text-muted-foreground mt-4 text-sm">
-                No password needed. Sign in with a one-time email code.
+                No password needed. You sign in with a one-time email code.
               </p>
             </div>
             <div className="relative">
@@ -306,7 +306,7 @@ export default async function HomePage() {
                     <CheckCircle2 className="text-primary size-4 shrink-0" /> {line}
                   </span>
                 ))}
-                <Button className="mt-4 h-11" variant="outline" render={<Link href="/login" />}>
+                <Button className="mt-4 h-11" variant="outline" render={<Link href="/signup" />}>
                   Start free
                 </Button>
               </CardContent>
@@ -335,7 +335,7 @@ export default async function HomePage() {
                     <CheckCircle2 className="text-primary size-4 shrink-0" /> {line}
                   </span>
                 ))}
-                <Button className="mt-4 h-11" render={<Link href="/login" />}>
+                <Button className="mt-4 h-11" render={<Link href="/signup" />}>
                   Start free
                 </Button>
               </CardContent>

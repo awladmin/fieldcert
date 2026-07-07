@@ -41,6 +41,9 @@ export interface OtpFormState {
 export async function requestLoginCode(_prev: OtpFormState, formData: FormData): Promise<OtpFormState> {
   const email = String(formData.get("email") ?? "").trim();
   if (!email) return { error: "Enter your email address" };
+  // Signup collects the name up front; it lands in user metadata so the
+  // profile trigger fills it in and onboarding starts pre-populated.
+  const fullName = String(formData.get("fullName") ?? "").trim();
 
   const { headers } = await import("next/headers");
   const h = await headers();
@@ -52,6 +55,7 @@ export async function requestLoginCode(_prev: OtpFormState, formData: FormData):
     options: {
       shouldCreateUser: true,
       emailRedirectTo: `${origin}/auth/confirm`,
+      ...(fullName ? { data: { full_name: fullName } } : {}),
     },
   });
   if (error) return { error: error.message };
