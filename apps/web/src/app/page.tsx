@@ -217,10 +217,10 @@ export default async function HomePage() {
             <div className="relative order-2 lg:order-1">
               <div className="overflow-hidden rounded-2xl shadow-xl ring-1 ring-black/10">
                 <Image
-                  src="/images/pexels-17842832.jpg"
-                  alt="Engineer inspecting an electrical panel"
-                  width={800}
-                  height={533}
+                  src="/images/board-scanner.jpg"
+                  alt="Photographing a consumer unit with the FieldCert board scanner"
+                  width={1536}
+                  height={1024}
                   className="h-full w-full object-cover"
                 />
               </div>
@@ -341,16 +341,27 @@ export default async function HomePage() {
 
         {/* Any device + mobile app */}
         <section className="from-primary/15 via-primary/5 border-y bg-gradient-to-br to-transparent">
-          <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-6 px-6 py-16 text-center">
-            <h2 className="text-3xl font-bold">Works on any device. Today.</h2>
-            <p className="text-muted-foreground max-w-xl">
-              Phone, tablet, laptop, the Windows PC in the office: FieldCert runs in the browser
-              with one login and everything in sync. Native iOS and Android apps are coming, with
-              fully offline certificates for plant rooms and basements with no signal.
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-4">
-              <AppStoreBadge />
-              <GooglePlayBadge />
+          <div className="mx-auto grid w-full max-w-6xl items-center gap-12 px-6 py-16 lg:grid-cols-2">
+            <div className="overflow-hidden rounded-2xl shadow-xl ring-1 ring-black/10">
+              <Image
+                src="/images/any-device.jpg"
+                alt="FieldCert running on a phone and tablet in a work van"
+                width={1536}
+                height={1024}
+                className="h-full w-full object-cover"
+              />
+            </div>
+            <div className="flex flex-col items-start gap-5">
+              <h2 className="text-3xl font-bold">Works on any device. Today.</h2>
+              <p className="text-muted-foreground">
+                Phone, tablet, laptop, the Windows PC in the office: FieldCert runs in the browser
+                with one login and everything in sync. Native iOS and Android apps are coming, with
+                fully offline certificates for plant rooms and basements with no signal.
+              </p>
+              <div className="flex flex-wrap items-center gap-4">
+                <AppStoreBadge />
+                <GooglePlayBadge />
+              </div>
             </div>
           </div>
         </section>
@@ -558,13 +569,7 @@ export default async function HomePage() {
         <div className="border-t">
           <div className="text-muted-foreground mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-2 px-6 py-5 text-xs">
             <span>© 2026 FieldCert. All rights reserved.</span>
-            <span>
-              Photos by{" "}
-              <a className="underline hover:no-underline" href="https://www.pexels.com" target="_blank" rel="noreferrer">
-                Pexels
-              </a>{" "}
-              photographers, used under the Pexels licence.
-            </span>
+            <span>Made for UK electricians.</span>
           </div>
         </div>
       </footer>
