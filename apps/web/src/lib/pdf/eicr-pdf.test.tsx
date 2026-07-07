@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { emptyEicr, type Eicr } from "@fieldcert/cert-schemas";
+import { emptyEicr, INSPECTION_SCHEDULE, type Eicr } from "@fieldcert/cert-schemas";
 import { renderEicrPdfBuffer } from "./eicr-pdf";
+
+function pageCount(buffer: Buffer): number {
+  return (buffer.toString("latin1").match(/\/Type\s*\/Page[^s]/g) ?? []).length;
+}
 
 function sampleCert(): Eicr {
   return {
@@ -56,5 +60,37 @@ describe("renderEicrPdfBuffer", () => {
       issuedAt: "2026-07-07",
     });
     expect(buffer.subarray(0, 5).toString()).toBe("%PDF-");
+  });
+
+  it("renders report, board schedules and inspection schedule as separate pages", async () => {
+    const cert: Eicr = {
+      ...sampleCert(),
+      inspectionSchedule: Object.fromEntries(
+        INSPECTION_SCHEDULE.flatMap((s) => s.items.map((i) => [i.id, "ok" as const]))
+      ),
+      customScheduleItems: [{ id: "x1", description: "Battery isolation", outcome: "NA" }],
+      boards: [
+        ...sampleCert().boards,
+        { id: "db2", designation: "DB2", location: "Garage", circuits: [], testResults: [] },
+      ],
+    };
+    const buffer = await renderEicrPdfBuffer({
+      cert,
+      orgName: "Jordan Electrical Ltd",
+      reference: "FC-TEST0002",
+      issuedAt: "2026-07-07",
+    });
+    // Page 1 report, 1+ board pages, 2+ schedule pages (92 items span pages)
+    expect(pageCount(buffer)).toBeGreaterThanOrEqual(4);
+  });
+
+  it("an empty draft has no board page but always carries the schedule", async () => {
+    const buffer = await renderEicrPdfBuffer({
+      cert: emptyEicr(),
+      orgName: "Test Org",
+      reference: "FC-EMPTY002",
+      issuedAt: "2026-07-07",
+    });
+    expect(pageCount(buffer)).toBeGreaterThanOrEqual(3);
   });
 });

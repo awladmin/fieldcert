@@ -21,6 +21,7 @@ import type { ObservationDraft } from "@/lib/ai/extract";
 import { DraftObservationButton } from "./ai-buttons";
 import { BoardsSection } from "./boards-section";
 import { ScheduleSection } from "./schedule-section";
+import { ValidatePanel } from "./validate-panel";
 import { NumberField, SelectField, TextField } from "./fields";
 
 const OBSERVATION_CODES = [
@@ -41,19 +42,21 @@ function todayIso() {
 
 function Section({
   part,
+  id,
   title,
   description,
   action,
   children,
 }: {
   part: string;
+  id: string;
   title: string;
   description?: string;
   action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
-    <Card>
+    <Card id={id} className="scroll-mt-24">
       <CardHeader className="flex flex-row items-start justify-between gap-3">
         <div>
           <p className="text-primary text-xs font-bold tracking-widest uppercase">{part}</p>
@@ -175,6 +178,14 @@ export function EicrBuilder({
     });
   }
 
+  /** Jump from the Validate panel: reveal issue-stage rules inline, then scroll. */
+  function jumpToSection(anchor: string) {
+    setShowAllIssues(true);
+    requestAnimationFrame(() => {
+      document.getElementById(anchor)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-6">
       {/* Sticky summary bar: state, live validation counts, actions */}
@@ -214,6 +225,7 @@ export function EicrBuilder({
                 {saveState === "saving" ? "Saving" : saveState === "error" ? "Save failed" : "Saved"}
               </span>
             )}
+            {!readOnly && <ValidatePanel validation={validation} onJump={jumpToSection} />}
             {status === "draft" && engineerMustSubmit && (
               <Button size="lg" onClick={() => guardedAction(() => submitForApproval(id), "Submitted for approval")} disabled={busy}>
                 {busy ? "Submitting" : "Submit for approval"}
@@ -273,7 +285,7 @@ export function EicrBuilder({
       </div>
 
       <fieldset disabled={readOnly} className="flex flex-col gap-6">
-        <Section part="Part 1" title="Client and installation" description="Who the report is for and where the installation is.">
+        <Section part="Part 1" id="part-1" title="Client and installation" description="Who the report is for and where the installation is.">
           <div className="grid gap-5 sm:grid-cols-2">
             <TextField
               label="Client name"
@@ -327,7 +339,7 @@ export function EicrBuilder({
           </div>
         </Section>
 
-        <Section part="Part 2" title="Supply characteristics" description="Details of the incoming supply and earthing.">
+        <Section part="Part 2" id="part-2" title="Supply characteristics" description="Details of the incoming supply and earthing.">
           <div className="grid gap-5 sm:grid-cols-3">
             <SelectField
               label="Earthing arrangement"
@@ -357,6 +369,7 @@ export function EicrBuilder({
 
         <Section
           part="Part 3"
+          id="part-3"
           title="Boards and circuits"
           description="Each consumer unit or distribution board with its main switch, SPD and circuit test results. Zs is checked live against BS 7671 Table 41.3."
         >
@@ -365,6 +378,7 @@ export function EicrBuilder({
 
         <Section
           part="Part 4"
+          id="part-4"
           title="Inspection schedule"
           description="The BS 7671 condition report checklist. Every item needs an outcome before the report can be issued; C1, C2 and FI items must be backed by an observation."
         >
@@ -373,6 +387,7 @@ export function EicrBuilder({
 
         <Section
           part="Part 5"
+          id="part-5"
           title="Observations"
           description="Defects and departures found during the inspection, each with its classification code."
           action={
@@ -430,7 +445,7 @@ export function EicrBuilder({
           )}
         </Section>
 
-        <Section part="Part 6" title="Summary and declaration" description="The overall verdict and who is signing it off.">
+        <Section part="Part 6" id="part-6" title="Summary and declaration" description="The overall verdict and who is signing it off.">
           <div className="grid gap-5 sm:grid-cols-2">
             <SelectField
               label="Overall assessment"

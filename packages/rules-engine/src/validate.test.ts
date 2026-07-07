@@ -158,6 +158,22 @@ describe("validateEicr: Zs limits (BS 7671 Table 41.3)", () => {
     expect(max).toBeCloseTo(1.37, 2);
   });
 
+  it("computes limits across curves: Zs halves from B to C and again to D", () => {
+    // Zs = 230 x 0.95 / (k x In) with k = 5 / 10 / 20 for B / C / D
+    const b16 = maxZsOhms({ id: "c", ocpd: { curve: "B", ratingA: 16 } });
+    const c16 = maxZsOhms({ id: "c", ocpd: { curve: "C", ratingA: 16 } });
+    const d16 = maxZsOhms({ id: "c", ocpd: { curve: "D", ratingA: 16 } });
+    expect(b16).toBeCloseTo(2.73, 2);
+    expect(c16).toBeCloseTo(1.37, 2);
+    expect(d16).toBeCloseTo(0.68, 2);
+  });
+
+  it("returns null when the device is not fully specified", () => {
+    expect(maxZsOhms({ id: "c" })).toBeNull();
+    expect(maxZsOhms({ id: "c", ocpd: { curve: "B" } })).toBeNull();
+    expect(maxZsOhms({ id: "c", ocpd: { ratingA: 32 } })).toBeNull();
+  });
+
   function certWithZs(zsOhms: number): Eicr {
     return {
       ...baseCert(),

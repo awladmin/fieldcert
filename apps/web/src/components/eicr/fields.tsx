@@ -1,5 +1,6 @@
 "use client";
 
+import { CheckCircle2 } from "lucide-react";
 import type { ValidationIssue } from "@fieldcert/rules-engine";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +12,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+
+/** Green tick beside a label the moment a field holds a valid value. */
+function FieldTick({ show }: { show: boolean }) {
+  if (!show) return null;
+  return <CheckCircle2 className="text-primary inline size-3.5" aria-label="Complete" />;
+}
+
+function isClean(issues: ValidationIssue[]) {
+  return !issues.some((i) => i.severity === "error");
+}
 
 export function FieldIssues({ issues }: { issues: ValidationIssue[] }) {
   if (issues.length === 0) return null;
@@ -55,7 +66,9 @@ export function TextField({
 }) {
   return (
     <div className={cn("flex flex-col gap-2", className)}>
-      <Label className="text-sm font-medium">{label}</Label>
+      <Label className="flex items-center gap-1.5 text-sm font-medium">
+        {label} <FieldTick show={Boolean(value) && isClean(issues)} />
+      </Label>
       <Input
         type={type}
         value={value ?? ""}
@@ -85,9 +98,12 @@ export function NumberField({
 }) {
   return (
     <div className={cn("flex flex-col gap-2", className)}>
-      <Label className="text-sm font-medium">
-        {label}
-        {unit ? <span className="text-muted-foreground font-normal"> ({unit})</span> : null}
+      <Label className="flex items-center gap-1.5 text-sm font-medium">
+        <span>
+          {label}
+          {unit ? <span className="text-muted-foreground font-normal"> ({unit})</span> : null}
+        </span>
+        <FieldTick show={value !== undefined && isClean(issues)} />
       </Label>
       <Input
         type="number"
@@ -198,7 +214,9 @@ export function SelectField({
 }) {
   return (
     <div className={cn("flex flex-col gap-2", className)}>
-      <Label className="text-sm font-medium">{label}</Label>
+      <Label className="flex items-center gap-1.5 text-sm font-medium">
+        {label} <FieldTick show={Boolean(value) && isClean(issues)} />
+      </Label>
       <Select value={value ?? ""} onValueChange={(v) => onChange(v || undefined)}>
         <SelectTrigger
           className="!h-12 w-full text-base"
