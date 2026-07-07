@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { createAuthClient } from "@/lib/supabase/server";
 import { Logo, LogoMark } from "@/components/logo";
+import { NewsletterForm } from "@/components/newsletter-form";
 import { AppStoreBadge, GooglePlayBadge } from "@/components/store-badges";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -49,6 +50,10 @@ export default async function HomePage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  // Pre-launch mode until flipped: sign-up actions are replaced by the
+  // launch list, and the September 2026 date is shown. Set
+  // NEXT_PUBLIC_LAUNCHED=true to go live.
+  const launched = process.env.NEXT_PUBLIC_LAUNCHED === "true";
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -67,11 +72,13 @@ export default async function HomePage() {
           <div className="flex items-center gap-3">
             {user ? (
               <Button render={<Link href="/dashboard" />}>Go to dashboard</Button>
-            ) : (
+            ) : launched ? (
               <>
                 <Button variant="ghost" render={<Link href="/login" />}>Log in</Button>
                 <Button render={<Link href="/signup" />}>Try it free</Button>
               </>
+            ) : (
+              <Button render={<a href="#notify" />}>Get early access</Button>
             )}
           </div>
         </div>
@@ -83,9 +90,16 @@ export default async function HomePage() {
           <div className="from-primary/10 pointer-events-none absolute inset-0 bg-gradient-to-b to-transparent" />
           <div className="relative mx-auto grid w-full max-w-6xl items-center gap-14 px-6 py-16 lg:grid-cols-[1fr_1.05fr] lg:py-24">
             <div>
-              <Badge variant="outline" className="border-primary/40 text-primary mb-5 font-semibold">
-                Built on the BS 7671 18th Edition rules
-              </Badge>
+              <div className="mb-5 flex flex-wrap items-center gap-2">
+                <Badge variant="outline" className="border-primary/40 text-primary font-semibold">
+                  Built on the BS 7671 18th Edition rules
+                </Badge>
+                {!launched && (
+                  <Badge className="bg-amber-500 font-semibold text-white">
+                    Launching September 2026
+                  </Badge>
+                )}
+              </div>
               <h1 className="text-4xl font-extrabold tracking-tight text-balance sm:text-5xl">
                 Electrical certificates.
                 <br />
@@ -95,14 +109,26 @@ export default async function HomePage() {
                 Photograph the board and the schedule fills itself. Every value is validated
                 against BS 7671 as you type. A certificate with errors cannot be issued.
               </p>
-              <div className="mt-8 flex flex-wrap items-center gap-3">
-                <Button size="lg" className="h-12 px-7 text-base" render={<Link href="/signup" />}>
-                  Start your 30-day free trial
-                </Button>
-              </div>
-              <p className="text-muted-foreground mt-4 text-sm font-medium">
-                No card needed. Full product, free for 30 days.
-              </p>
+              {launched ? (
+                <>
+                  <div className="mt-8 flex flex-wrap items-center gap-3">
+                    <Button size="lg" className="h-12 px-7 text-base" render={<Link href="/signup" />}>
+                      Start your 30-day free trial
+                    </Button>
+                  </div>
+                  <p className="text-muted-foreground mt-4 text-sm font-medium">
+                    No card needed. Full product, free for 30 days.
+                  </p>
+                </>
+              ) : (
+                <div id="notify" className="mt-8 scroll-mt-24">
+                  <NewsletterForm />
+                  <p className="text-muted-foreground mt-4 text-sm font-medium">
+                    FieldCert launches September 2026. Join the list and be first in, with a 30-day
+                    free trial waiting. No spam, just the launch.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Product mock: a live certificate being validated */}
@@ -430,7 +456,9 @@ export default async function HomePage() {
         <section id="pricing" className="mx-auto w-full max-w-6xl px-6 py-20">
           <h2 className="text-center text-3xl font-bold">Simple pricing</h2>
           <p className="text-muted-foreground mt-3 text-center">
-            Every plan starts with a 30-day free trial, no card needed. No contracts, cancel any time.
+            {launched
+              ? "Every plan starts with a 30-day free trial, no card needed. No contracts, cancel any time."
+              : "From September 2026. Every plan starts with a 30-day free trial, no card needed. No contracts, cancel any time."}
           </p>
           <div className="mx-auto mt-12 grid max-w-5xl gap-6 sm:grid-cols-2 lg:grid-cols-3">
             <Card>
@@ -454,9 +482,15 @@ export default async function HomePage() {
                     <CheckCircle2 className="text-primary size-4 shrink-0" /> {line}
                   </span>
                 ))}
-                <Button className="mt-4 h-11" variant="outline" render={<Link href="/signup" />}>
-                  Start your free trial
-                </Button>
+                {launched ? (
+                  <Button className="mt-4 h-11" variant="outline" render={<Link href="/signup" />}>
+                    Start your free trial
+                  </Button>
+                ) : (
+                  <Button className="mt-4 h-11" variant="outline" render={<a href="#notify" />}>
+                    Join the waiting list
+                  </Button>
+                )}
               </CardContent>
             </Card>
             <Card className="border-primary border-2 shadow-lg">
@@ -485,9 +519,15 @@ export default async function HomePage() {
                     <CheckCircle2 className="text-primary size-4 shrink-0" /> {line}
                   </span>
                 ))}
-                <Button className="mt-4 h-11" render={<Link href="/signup" />}>
-                  Start your free trial
-                </Button>
+                {launched ? (
+                  <Button className="mt-4 h-11" render={<Link href="/signup" />}>
+                    Start your free trial
+                  </Button>
+                ) : (
+                  <Button className="mt-4 h-11" render={<a href="#notify" />}>
+                    Join the waiting list
+                  </Button>
+                )}
               </CardContent>
             </Card>
             <Card>
@@ -546,7 +586,9 @@ export default async function HomePage() {
             <p className="mb-3 text-sm font-semibold">Company</p>
             <ul className="text-muted-foreground flex flex-col gap-2 text-sm">
               <li><Link className="hover:text-foreground" href="/contact">Contact</Link></li>
-              <li><Link className="hover:text-foreground" href="/login">Log in</Link></li>
+              {launched && (
+                <li><Link className="hover:text-foreground" href="/login">Log in</Link></li>
+              )}
             </ul>
           </div>
           <div>
