@@ -24,8 +24,12 @@ type AccountType = "individual" | "business";
 
 const STEPS: OnboardingStep[] = ["profile", "org", "billing"];
 
-/** Signing up already earns 20%: momentum from the first screen. */
-const PROGRESS: Record<OnboardingStep, number> = { profile: 20, org: 55, billing: 85 };
+/**
+ * Continues the signup wizard's journey (which ends at 75%): signup-path users
+ * land straight on billing at 90%. Login-path users without an org walk all
+ * three steps.
+ */
+const PROGRESS: Record<OnboardingStep, number> = { profile: 30, org: 60, billing: 90 };
 
 export function OnboardingWizard({
   initialStep,

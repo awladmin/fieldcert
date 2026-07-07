@@ -1,12 +1,7 @@
-import { Suspense } from "react";
-import { AuthCard } from "@/components/auth-card";
+import { SignupWizard } from "@/components/signup-wizard";
 
-export const metadata = { title: "Create your account | FieldCert" };
+export const metadata = { title: "Get started | FieldCert" };
 
 export default function SignupPage() {
-  return (
-    <Suspense>
-      <AuthCard mode="signup" />
-    </Suspense>
-  );
+  return <SignupWizard />;
 }

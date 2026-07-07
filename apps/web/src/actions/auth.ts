@@ -73,3 +73,41 @@ export async function verifyLoginCode(_prev: OtpFormState, formData: FormData): 
 
   redirect("/dashboard");
 }
+
+/**
+ * Final step of the signup wizard: verifies the code, then applies everything
+ * collected in the earlier steps (name, account type, company) so the user
+ * lands directly on the billing step with their organisation already created.
+ */
+export async function verifySignupCode(_prev: OtpFormState, formData: FormData): Promise<OtpFormState> {
+  const email = String(formData.get("email") ?? "").trim();
+  const token = String(formData.get("token") ?? "").trim();
+  const fullName = String(formData.get("fullName") ?? "").trim();
+  const accountType = formData.get("accountType") === "individual" ? "individual" : "business";
+  const companyName = String(formData.get("companyName") ?? "").trim();
+  if (!email || token.length !== 6) return { sent: true, email, error: "Enter the 6-digit code from the email" };
+
+  const supabase = await createAuthClient();
+  const { error } = await supabase.auth.verifyOtp({ email, token, type: "email" });
+  if (error) return { sent: true, email, error: error.message };
+
+  const { saveProfileName, createOrg } = await import("@/actions/orgs");
+  if (fullName) await saveProfileName(fullName);
+
+  // Invited users may already belong to an org; do not create a duplicate.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data: membership } = await supabase
+    .from("org_members")
+    .select("org_id")
+    .eq("user_id", user!.id)
+    .limit(1)
+    .maybeSingle();
+  if (!membership && companyName) {
+    const result = await createOrg(companyName, accountType);
+    if (result.error) return { sent: true, email, error: result.error };
+  }
+
+  redirect("/onboarding");
+}
