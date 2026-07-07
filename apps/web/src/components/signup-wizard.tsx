@@ -241,7 +241,7 @@ export function SignupWizard() {
                   </InputOTPGroup>
                 </InputOTP>
                 <p className="text-muted-foreground text-xs">
-                  You can also click the link in the email, then head back here.
+                  No code in the email? Click its confirmation link instead: that signs you in too, and we finish setup on the next screen.
                 </p>
               </div>
               <Button type="submit" className="h-12 text-base" disabled={pending || code.length !== 6}>

@@ -98,7 +98,7 @@ export function AuthCard() {
                 </InputOTP>
               </div>
               <p className="text-muted-foreground text-xs">
-                You can also just click the link in the email. Both work.
+                No code in the email? Click its sign-in link instead. Both get you in.
               </p>
               {error && (
                 <Alert variant="destructive">
