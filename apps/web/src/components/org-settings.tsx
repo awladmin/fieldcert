@@ -17,6 +17,7 @@ export function OrgSettings({
   seats,
   accountType,
   subscriptionStatus,
+  trialEndsAt = null,
 }: {
   orgName: string;
   qsApprovalRequired: boolean;
@@ -24,6 +25,7 @@ export function OrgSettings({
   seats: number;
   accountType: "individual" | "business";
   subscriptionStatus: string;
+  trialEndsAt?: string | null;
 }) {
   const [name, setName] = useState(orgName);
   const [qsRequired, setQsRequired] = useState(qsApprovalRequired);
@@ -90,9 +92,15 @@ export function OrgSettings({
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground">Status</span>
             <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 capitalize">
-              {subscriptionStatus}
+              {subscriptionStatus === "trialing" ? "Free trial" : subscriptionStatus}
             </Badge>
           </div>
+          {subscriptionStatus === "trialing" && trialEndsAt && (
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Trial ends</span>
+              <span className="font-medium">{new Date(trialEndsAt).toLocaleDateString("en-GB")}</span>
+            </div>
+          )}
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground">Monthly total</span>
             <span className="font-medium tabular-nums">

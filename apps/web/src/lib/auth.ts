@@ -22,6 +22,7 @@ export interface OrgContext {
   subscriptionStatus: string;
   seats: number;
   qsApprovalRequired: boolean;
+  trialEndsAt: string | null;
 }
 
 /**
@@ -32,7 +33,9 @@ export const requireOrg = cache(async () => {
   const { supabase, user } = await requireUser();
   const { data: membership } = await supabase
     .from("org_members")
-    .select("org_id, role, orgs(name, account_type, plan, subscription_status, seats, qs_approval_required)")
+    .select(
+      "org_id, role, orgs(name, account_type, plan, subscription_status, seats, qs_approval_required, trial_ends_at)"
+    )
     .eq("user_id", user.id)
     .limit(1)
     .maybeSingle();
@@ -48,8 +51,13 @@ export const requireOrg = cache(async () => {
     subscriptionStatus: o.subscription_status,
     seats: o.seats,
     qsApprovalRequired: o.qs_approval_required,
+    trialEndsAt: o.trial_ends_at,
   };
-  if (org.subscriptionStatus !== "active") redirect("/onboarding");
+  const trialValid =
+    org.subscriptionStatus === "trialing" &&
+    org.trialEndsAt !== null &&
+    new Date(org.trialEndsAt) > new Date();
+  if (org.subscriptionStatus !== "active" && !trialValid) redirect("/onboarding");
   return { supabase, user, org };
 });
 

@@ -340,6 +340,7 @@ export type Database = {
           slug: string
           stripe_customer_id: string | null
           subscription_status: string
+          trial_ends_at: string | null
         }
         Insert: {
           account_type?: string
@@ -354,6 +355,7 @@ export type Database = {
           slug: string
           stripe_customer_id?: string | null
           subscription_status?: string
+          trial_ends_at?: string | null
         }
         Update: {
           account_type?: string
@@ -368,6 +370,7 @@ export type Database = {
           slug?: string
           stripe_customer_id?: string | null
           subscription_status?: string
+          trial_ends_at?: string | null
         }
         Relationships: []
       }

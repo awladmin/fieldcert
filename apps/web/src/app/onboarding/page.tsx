@@ -14,25 +14,31 @@ export default async function OnboardingPage() {
     supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle(),
     supabase
       .from("org_members")
-      .select("role, orgs(name, account_type, subscription_status, seats)")
+      .select("role, orgs(name, account_type, subscription_status, seats, trial_ends_at)")
       .eq("user_id", user.id)
       .limit(1)
       .maybeSingle(),
   ]);
 
-  if (membership?.orgs?.subscription_status === "active") redirect("/dashboard");
+  const orgRow = membership?.orgs;
+  const trialValid =
+    orgRow?.subscription_status === "trialing" &&
+    orgRow.trial_ends_at !== null &&
+    new Date(orgRow.trial_ends_at) > new Date();
+  if (orgRow?.subscription_status === "active" || trialValid) redirect("/dashboard");
 
   // New users always start at the profile step: even with the name known from
   // signup it holds the individual-or-business choice. Prefilled, so it is quick.
-  const step: OnboardingStep = membership?.orgs ? "billing" : "profile";
+  const step: OnboardingStep = orgRow ? "billing" : "profile";
 
   return (
     <OnboardingWizard
       initialStep={step}
       initialName={profile?.full_name ?? ""}
-      orgAccountType={membership?.orgs?.account_type === "individual" ? "individual" : "business"}
+      orgAccountType={orgRow?.account_type === "individual" ? "individual" : "business"}
       isAdmin={!membership || membership.role === "admin"}
-      orgName={membership?.orgs?.name ?? ""}
+      orgName={orgRow?.name ?? ""}
+      trialExpired={orgRow?.subscription_status === "trialing" && !trialValid}
     />
   );
 }

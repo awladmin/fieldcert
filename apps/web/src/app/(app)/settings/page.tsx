@@ -14,6 +14,7 @@ export default async function SettingsPage() {
       seats={org.seats}
       accountType={org.accountType}
       subscriptionStatus={org.subscriptionStatus}
+      trialEndsAt={org.trialEndsAt}
     />
   );
 }

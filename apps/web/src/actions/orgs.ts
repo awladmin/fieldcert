@@ -50,6 +50,34 @@ export async function createOrg(
   return { error: "Could not create the organisation. Try a different name" };
 }
 
+/** Starts the 30-day free trial: full product, no card. */
+export async function startTrial(seats: number): Promise<StepResult> {
+  const { supabase, user } = await requireUser();
+  const { data: membership } = await supabase
+    .from("org_members")
+    .select("org_id, role, orgs(account_type)")
+    .eq("user_id", user.id)
+    .limit(1)
+    .maybeSingle();
+  if (!membership || membership.role !== "admin") return { error: "Only an admin can start the trial" };
+
+  const accountType = membership.orgs?.account_type ?? "business";
+  const trialEnd = new Date();
+  trialEnd.setDate(trialEnd.getDate() + 30);
+
+  const { error } = await supabase
+    .from("orgs")
+    .update({
+      plan: accountType === "individual" ? "individual" : "business",
+      subscription_status: "trialing",
+      trial_ends_at: trialEnd.toISOString(),
+      seats: accountType === "individual" ? 1 : Math.max(1, Math.min(200, Math.round(seats))),
+    })
+    .eq("id", membership.org_id);
+  if (error) return { error: error.message };
+  return { ok: true };
+}
+
 /**
  * Mock checkout: records the chosen plan and marks the subscription active.
  * Swap for a real Stripe Checkout session when billing goes live.

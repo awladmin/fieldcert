@@ -3,6 +3,7 @@ import Link from "next/link";
 import {
   AlertTriangle,
   CheckCircle2,
+  FileCheck2,
   Plug,
   ScanLine,
   ShieldCheck,
@@ -12,7 +13,7 @@ import {
   Zap,
 } from "lucide-react";
 import { createAuthClient } from "@/lib/supabase/server";
-import { Logo } from "@/components/logo";
+import { Logo, LogoMark } from "@/components/logo";
 import { AppStoreBadge, GooglePlayBadge } from "@/components/store-badges";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -69,7 +70,7 @@ export default async function HomePage() {
             ) : (
               <>
                 <Button variant="ghost" render={<Link href="/login" />}>Log in</Button>
-                <Button render={<Link href="/signup" />}>Start free</Button>
+                <Button render={<Link href="/signup" />}>Start free trial</Button>
               </>
             )}
           </div>
@@ -77,89 +78,135 @@ export default async function HomePage() {
       </header>
 
       <main className="flex-1">
-        {/* Hero */}
+        {/* Hero: the product is the certificate */}
         <section className="relative overflow-hidden">
           <div className="from-primary/10 pointer-events-none absolute inset-0 bg-gradient-to-b to-transparent" />
-          <div className="relative mx-auto grid w-full max-w-6xl items-center gap-12 px-6 py-16 lg:grid-cols-2 lg:py-24">
+          <div className="relative mx-auto grid w-full max-w-6xl items-center gap-14 px-6 py-16 lg:grid-cols-[1fr_1.05fr] lg:py-24">
             <div>
               <Badge variant="outline" className="border-primary/40 text-primary mb-5 font-semibold">
                 Built on the BS 7671 18th Edition rules
               </Badge>
               <h1 className="text-4xl font-extrabold tracking-tight text-balance sm:text-5xl">
-                Electrical certificates that cannot go out wrong
+                Electrical certificates.
+                <br />
+                <span className="text-primary">Filled by AI.</span> Checked by rules.
               </h1>
-              <p className="text-muted-foreground mt-5 max-w-xl text-lg">
-                Paperwork is the worst part of the job, and a rejected certificate is the worst
-                part of the paperwork. FieldCert reads the board straight off a photo, then checks
-                every EICR against BS 7671 as you type: wrong Zs, slow RCD, C1 on a satisfactory
-                report, all caught on site, not in an audit.
+              <p className="text-muted-foreground mt-5 max-w-md text-lg">
+                Photograph the board and the schedule fills itself. Every value is validated
+                against BS 7671 as you type. A certificate with errors cannot be issued.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-3">
                 <Button size="lg" className="h-12 px-7 text-base" render={<Link href="/signup" />}>
-                  Start free
-                </Button>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="h-12 px-7 text-base"
-                  render={<a href="/sample-eicr.pdf" target="_blank" />}
-                >
-                  See a sample certificate
+                  Start your 30-day free trial
                 </Button>
               </div>
-              <p className="text-muted-foreground mt-4 text-sm">
-                No password needed. You sign in with a one-time email code.
-              </p>
-              <p className="mt-6 text-sm font-medium">
-                Building job management or field service software?{" "}
-                <Link className="text-primary underline underline-offset-4" href="#api">
-                  FieldCert is API-first: embed validated certificates in your platform
-                </Link>
+              <p className="text-muted-foreground mt-4 text-sm font-medium">
+                No card needed. Full product, free for 30 days.
               </p>
             </div>
+
+            {/* Product mock: a live certificate being validated */}
             <div className="relative">
-              <div className="overflow-hidden rounded-2xl shadow-2xl ring-1 ring-black/10">
-                <Image
-                  src="/images/pexels-257736.jpg"
-                  alt="Electrician working on a consumer unit"
-                  width={800}
-                  height={533}
-                  priority
-                  className="h-full w-full object-cover"
-                />
+              <div className="bg-card rounded-2xl border shadow-2xl">
+                <div className="flex items-center justify-between border-b px-5 py-4">
+                  <div className="flex items-center gap-3">
+                    <LogoMark className="size-8" />
+                    <div>
+                      <p className="text-sm font-bold">Electrical Installation Condition Report</p>
+                      <p className="text-muted-foreground text-xs">12 High Street, Amersham · FC-2481A</p>
+                    </div>
+                  </div>
+                  <span className="bg-muted text-muted-foreground rounded-full px-2.5 py-1 text-xs font-semibold">
+                    Draft
+                  </span>
+                </div>
+                <div className="flex flex-col px-5 py-4">
+                  <div className="text-muted-foreground grid grid-cols-[1fr_auto_auto] gap-x-6 pb-2 text-[11px] font-semibold tracking-wide uppercase">
+                    <span>Circuit</span>
+                    <span>Device</span>
+                    <span>Zs</span>
+                  </div>
+                  <div className="grid grid-cols-[1fr_auto_auto] items-center gap-x-6 border-t py-2.5 text-sm">
+                    <span>1 · Kitchen ring</span>
+                    <span className="font-mono text-xs">B32</span>
+                    <span className="text-primary flex items-center gap-1 font-mono text-xs">
+                      0.61 <CheckCircle2 className="size-3.5" />
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-[1fr_auto_auto] items-center gap-x-6 border-t py-2.5 text-sm">
+                    <span>2 · Garage sockets</span>
+                    <span className="font-mono text-xs">B32</span>
+                    <span className="text-destructive flex items-center gap-1 font-mono text-xs">
+                      1.52 <XCircle className="size-3.5" />
+                    </span>
+                  </div>
+                  <p className="text-destructive pb-1 text-xs font-medium">
+                    Zs 1.52 exceeds the 1.37 maximum for a B32 device (BS 7671 Table 41.3)
+                  </p>
+                  <div className="grid grid-cols-[1fr_auto_auto] items-center gap-x-6 border-t py-2.5 text-sm">
+                    <span>3 · Lighting ground floor</span>
+                    <span className="font-mono text-xs">B6</span>
+                    <span className="text-primary flex items-center gap-1 font-mono text-xs">
+                      1.94 <CheckCircle2 className="size-3.5" />
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between border-t px-5 py-4">
+                  <span className="text-destructive flex items-center gap-1.5 text-sm font-semibold">
+                    <AlertTriangle className="size-4" /> 1 to fix before issue
+                  </span>
+                  <span className="bg-muted text-muted-foreground rounded-lg px-4 py-2 text-sm font-semibold">
+                    Issue certificate
+                  </span>
+                </div>
               </div>
-              <div className="bg-card absolute -bottom-6 -left-4 flex flex-col gap-2 rounded-xl border p-4 shadow-xl sm:-left-8">
-                <span className="text-destructive flex items-center gap-2 text-sm font-semibold">
-                  <XCircle className="size-4" />
-                  Zs 1.52 exceeds the 1.37 maximum for a B32
-                </span>
-                <span className="flex items-center gap-2 text-sm font-semibold text-amber-600">
-                  <AlertTriangle className="size-4" />
-                  RCD trip time missing on circuit 4
-                </span>
-                <span className="text-primary flex items-center gap-2 text-sm font-semibold">
-                  <CheckCircle2 className="size-4" />
-                  Fixed. Ready to issue
-                </span>
+              <div className="bg-card absolute -top-5 -right-3 flex items-center gap-2 rounded-xl border px-3.5 py-2 shadow-xl sm:-right-6">
+                <ScanLine className="text-primary size-4" />
+                <span className="text-xs font-semibold">12 circuits read from one photo</span>
+              </div>
+              <div className="bg-card absolute -bottom-5 -left-3 flex items-center gap-2 rounded-xl border px-3.5 py-2 shadow-xl sm:-left-6">
+                <ShieldCheck className="text-primary size-4" />
+                <span className="text-xs font-semibold">Validation cannot be switched off</span>
               </div>
             </div>
           </div>
         </section>
 
-        {/* Stats strip */}
+        {/* What it does, in three moves */}
         <section className="border-y">
-          <div className="mx-auto grid w-full max-w-6xl gap-6 px-6 py-8 text-center sm:grid-cols-3">
-            <div>
-              <p className="text-primary text-3xl font-extrabold">8+</p>
-              <p className="text-muted-foreground text-sm">statutory rule groups checked live</p>
+          <div className="mx-auto grid w-full max-w-6xl gap-6 px-6 py-12 md:grid-cols-3">
+            <div className="flex items-start gap-4">
+              <span className="bg-primary/10 text-primary flex size-11 shrink-0 items-center justify-center rounded-xl">
+                <ScanLine className="size-6" />
+              </span>
+              <div>
+                <p className="font-bold">Snap the board</p>
+                <p className="text-muted-foreground mt-1 text-sm">
+                  AI reads the photo and fills the circuit schedule in seconds.
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-primary text-3xl font-extrabold">0</p>
-              <p className="text-muted-foreground text-sm">certificates issued with outstanding errors</p>
+            <div className="flex items-start gap-4">
+              <span className="bg-primary/10 text-primary flex size-11 shrink-0 items-center justify-center rounded-xl">
+                <ShieldCheck className="size-6" />
+              </span>
+              <div>
+                <p className="font-bold">Validated as you type</p>
+                <p className="text-muted-foreground mt-1 text-sm">
+                  Every value checked against BS 7671, on the spot. Wrong ones cannot be issued.
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-primary text-3xl font-extrabold">Unlimited</p>
-              <p className="text-muted-foreground text-sm">certificates on Individual and Business plans</p>
+            <div className="flex items-start gap-4">
+              <span className="bg-primary/10 text-primary flex size-11 shrink-0 items-center justify-center rounded-xl">
+                <FileCheck2 className="size-6" />
+              </span>
+              <div>
+                <p className="font-bold">Issue and go</p>
+                <p className="text-muted-foreground mt-1 text-sm">
+                  Branded PDF, client share link, everything in your register. Done on site.
+                </p>
+              </div>
             </div>
           </div>
         </section>
@@ -372,7 +419,7 @@ export default async function HomePage() {
         <section id="pricing" className="mx-auto w-full max-w-6xl px-6 py-20">
           <h2 className="text-center text-3xl font-bold">Simple pricing</h2>
           <p className="text-muted-foreground mt-3 text-center">
-            Unlimited certificates for electricians, per-certificate pricing for platforms. No contracts, cancel any time.
+            Every plan starts with a 30-day free trial, no card needed. No contracts, cancel any time.
           </p>
           <div className="mx-auto mt-12 grid max-w-5xl gap-6 sm:grid-cols-2 lg:grid-cols-3">
             <Card>
@@ -397,7 +444,7 @@ export default async function HomePage() {
                   </span>
                 ))}
                 <Button className="mt-4 h-11" variant="outline" render={<Link href="/signup" />}>
-                  Start free
+                  Start your free trial
                 </Button>
               </CardContent>
             </Card>
@@ -426,7 +473,7 @@ export default async function HomePage() {
                   </span>
                 ))}
                 <Button className="mt-4 h-11" render={<Link href="/signup" />}>
-                  Start free
+                  Start your free trial
                 </Button>
               </CardContent>
             </Card>
