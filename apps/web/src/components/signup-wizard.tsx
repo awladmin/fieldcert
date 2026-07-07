@@ -66,6 +66,25 @@ const BENEFITS = [
 
 const RESEND_COOLDOWN_S = 45;
 
+function ReviewRow({ label, value, onEdit }: { label: string; value: string; onEdit: () => void }) {
+  return (
+    <div className="flex items-center justify-between gap-3 border-b py-3 last:border-b-0">
+      <div className="min-w-0">
+        <p className="text-muted-foreground text-xs">{label}</p>
+        <p className="truncate font-semibold">{value}</p>
+      </div>
+      <button
+        type="button"
+        aria-label={`Edit ${label.toLowerCase()}`}
+        className="text-primary hover:bg-primary/10 rounded-lg p-2"
+        onClick={onEdit}
+      >
+        <Pencil className="size-4" />
+      </button>
+    </div>
+  );
+}
+
 export function SignupWizard() {
   const [step, setStep] = useState<Step>("welcome");
   const [accountType, setAccountType] = useState<AccountType | null>(null);
@@ -139,28 +158,6 @@ export function SignupWizard() {
       const result = await verifySignupCode({}, formData);
       if (result?.error) setError(result.error);
     });
-  }
-
-  function ReviewRow({ label, value, editStep }: { label: string; value: string; editStep: Step }) {
-    return (
-      <div className="flex items-center justify-between gap-3 border-b py-3 last:border-b-0">
-        <div className="min-w-0">
-          <p className="text-muted-foreground text-xs">{label}</p>
-          <p className="truncate font-semibold">{value}</p>
-        </div>
-        <button
-          type="button"
-          aria-label={`Edit ${label.toLowerCase()}`}
-          className="text-primary hover:bg-primary/10 rounded-lg p-2"
-          onClick={() => {
-            setError(undefined);
-            setStep(editStep);
-          }}
-        >
-          <Pencil className="size-4" />
-        </button>
-      </div>
-    );
   }
 
   return (
@@ -325,13 +322,13 @@ export function SignupWizard() {
           {step === "review" && (
             <>
               <div className="rounded-xl border px-4">
-                <ReviewRow label="Name" value={name} editStep="name" />
+                <ReviewRow label="Name" value={name} onEdit={() => { setError(undefined); setStep("name"); }} />
                 <ReviewRow
                   label={accountType === "individual" ? "Trading name" : "Company"}
                   value={companyName}
-                  editStep="company"
+                  onEdit={() => { setError(undefined); setStep("company"); }}
                 />
-                <ReviewRow label="Email" value={email} editStep="email" />
+                <ReviewRow label="Email" value={email} onEdit={() => { setError(undefined); setStep("email"); }} />
               </div>
 
               <label className="flex cursor-pointer items-start gap-3">
