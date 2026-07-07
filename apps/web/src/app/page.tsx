@@ -70,7 +70,7 @@ export default async function HomePage() {
             ) : (
               <>
                 <Button variant="ghost" render={<Link href="/login" />}>Log in</Button>
-                <Button render={<Link href="/signup" />}>Start free trial</Button>
+                <Button render={<Link href="/signup" />}>Try it free</Button>
               </>
             )}
           </div>
@@ -545,7 +545,7 @@ export default async function HomePage() {
           <div>
             <p className="mb-3 text-sm font-semibold">Company</p>
             <ul className="text-muted-foreground flex flex-col gap-2 text-sm">
-              <li><a className="hover:text-foreground" href="mailto:hello@fieldcert.co.uk">Contact</a></li>
+              <li><Link className="hover:text-foreground" href="/contact">Contact</Link></li>
               <li><Link className="hover:text-foreground" href="/login">Log in</Link></li>
             </ul>
           </div>
