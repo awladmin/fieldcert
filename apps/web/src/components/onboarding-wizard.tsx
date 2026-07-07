@@ -24,11 +24,6 @@ type AccountType = "individual" | "business";
 
 const STEPS: OnboardingStep[] = ["profile", "org", "billing"];
 
-/**
- * Continues the signup wizard's journey (which ends at 75%): signup-path users
- * land straight on billing at 90%. Login-path users without an org walk all
- * three steps.
- */
 const PROGRESS: Record<OnboardingStep, number> = { profile: 30, org: 60, billing: 90 };
 
 export function OnboardingWizard({
@@ -56,6 +51,10 @@ export function OnboardingWizard({
   const [pending, startTransition] = useTransition();
 
   const stepIndex = STEPS.indexOf(step);
+  // Signup-path users arrive here with profile and org already done; showing
+  // them a fresh "Step 3 of 3" wizard reads as a second, contradictory journey.
+  // Only login-path users who walk profile and org get the step counter.
+  const showStepHeader = initialStep !== "billing";
 
   function submitProfile() {
     setError(undefined);
@@ -100,15 +99,22 @@ export function OnboardingWizard({
     <main className="flex min-h-screen items-center justify-center p-4">
       <Card className="w-full max-w-lg">
         <CardHeader>
-          <div className="mb-3 flex flex-col gap-2">
-            <div className="text-muted-foreground flex items-center justify-between text-xs font-medium">
-              <span>
-                Step {stepIndex + 1} of {STEPS.length}
-              </span>
-              <span className="text-primary">{PROGRESS[step]}% there</span>
+          {showStepHeader && (
+            <div className="mb-3 flex flex-col gap-2">
+              <div className="text-muted-foreground flex items-center justify-between text-xs font-medium">
+                <span>
+                  Step {stepIndex + 1} of {STEPS.length}
+                </span>
+                <span className="text-primary">{PROGRESS[step]}% there</span>
+              </div>
+              <Progress value={PROGRESS[step]} className="h-2" />
             </div>
-            <Progress value={PROGRESS[step]} className="h-2" />
-          </div>
+          )}
+          {!showStepHeader && !trialExpired && (
+            <p className="text-primary mb-1 text-xs font-semibold tracking-wide uppercase">
+              Your account is ready
+            </p>
+          )}
           <CardTitle>
             {step === "profile" && "Welcome to FieldCert"}
             {step === "org" && (accountType === "individual" ? "Your trading name" : "Your business")}

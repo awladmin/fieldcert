@@ -401,21 +401,21 @@ export function SignupWizard() {
                 </InputOTPGroup>
               </InputOTP>
 
-              <div className="text-muted-foreground flex flex-col gap-2 text-xs">
+              <div className="text-muted-foreground flex flex-col items-center gap-2 text-center text-xs">
                 {resendIn > 0 ? (
                   <p>You can request another code in {resendIn} seconds.</p>
                 ) : (
                   <button
                     type="button"
-                    className="text-primary w-fit font-medium underline underline-offset-4"
+                    className="text-primary font-medium underline underline-offset-4"
                     onClick={sendCode}
                     disabled={pending}
                   >
                     Resend the code
                   </button>
                 )}
-                <p className="flex items-center gap-1.5">
-                  <MailWarning className="size-3.5 text-amber-500" />
+                <p className="flex items-center justify-center gap-1.5">
+                  <MailWarning className="size-3.5 shrink-0 text-amber-500" />
                   <span>
                     <span className="font-semibold">Did not get the email?</span> Check your junk or
                     spam folder, or click the link inside it instead.
