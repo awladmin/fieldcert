@@ -108,6 +108,12 @@ export default async function HomePage() {
               <p className="text-muted-foreground mt-4 text-sm">
                 No password needed. You sign in with a one-time email code.
               </p>
+              <p className="mt-6 text-sm font-medium">
+                Building job management or field service software?{" "}
+                <Link className="text-primary underline underline-offset-4" href="#api">
+                  FieldCert is API-first: embed validated certificates in your platform
+                </Link>
+              </p>
             </div>
             <div className="relative">
               <div className="overflow-hidden rounded-2xl shadow-2xl ring-1 ring-black/10">
@@ -151,7 +157,7 @@ export default async function HomePage() {
             </div>
             <div>
               <p className="text-primary text-3xl font-extrabold">Unlimited</p>
-              <p className="text-muted-foreground text-sm">certificates on every plan, no per-certificate fees</p>
+              <p className="text-muted-foreground text-sm">certificates on Individual and Business plans</p>
             </div>
           </div>
         </section>
@@ -226,6 +232,7 @@ export default async function HomePage() {
                   </li>
                 ))}
               </ul>
+              <p className="mt-6 text-sm font-semibold text-white/90">From 99p per issued certificate, with unlimited validation calls. <a className="underline underline-offset-4" href="mailto:hello@fieldcert.co.uk?subject=FieldCert%20Platform%20API">Talk to us</a></p>
             </div>
             <pre className="overflow-x-auto rounded-2xl bg-black/40 p-6 text-xs leading-relaxed text-emerald-100/90 ring-1 ring-white/10">
               {API_EXAMPLE}
@@ -360,9 +367,9 @@ export default async function HomePage() {
         <section id="pricing" className="mx-auto w-full max-w-6xl px-6 py-20">
           <h2 className="text-center text-3xl font-bold">Simple pricing</h2>
           <p className="text-muted-foreground mt-3 text-center">
-            Unlimited certificates on every plan. No per-certificate fees, no contracts, cancel any time.
+            Unlimited certificates for electricians, per-certificate pricing for platforms. No contracts, cancel any time.
           </p>
-          <div className="mx-auto mt-12 grid max-w-3xl gap-6 sm:grid-cols-2">
+          <div className="mx-auto mt-12 grid max-w-5xl gap-6 sm:grid-cols-2 lg:grid-cols-3">
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Individual</CardTitle>
@@ -407,7 +414,7 @@ export default async function HomePage() {
                   "Team invites in seconds",
                   "QS approval workflow",
                   "Company-wide certificate register",
-                  "API access for your job software",
+                  "API access to connect your own systems",
                 ].map((line) => (
                   <span key={line} className="flex items-center gap-2">
                     <CheckCircle2 className="text-primary size-4 shrink-0" /> {line}
@@ -415,6 +422,36 @@ export default async function HomePage() {
                 ))}
                 <Button className="mt-4 h-11" render={<Link href="/signup" />}>
                   Start free
+                </Button>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Platform API</CardTitle>
+                <p className="text-4xl font-extrabold tabular-nums">
+                  99p
+                  <span className="text-muted-foreground text-sm font-normal">/issued certificate + VAT</span>
+                </p>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-2.5 text-sm">
+                {[
+                  "Embed certificates in your own software",
+                  "Unlimited validation calls",
+                  "Certificates branded for your customers",
+                  "PDF generation and share links built in",
+                  "Volume discounts from 1,000 certificates",
+                  "Integration support from our team",
+                ].map((line) => (
+                  <span key={line} className="flex items-center gap-2">
+                    <CheckCircle2 className="text-primary size-4 shrink-0" /> {line}
+                  </span>
+                ))}
+                <Button
+                  className="mt-4 h-11"
+                  variant="outline"
+                  render={<a href="mailto:hello@fieldcert.co.uk?subject=FieldCert%20Platform%20API" />}
+                >
+                  Talk to us
                 </Button>
               </CardContent>
             </Card>
