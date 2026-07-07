@@ -6,6 +6,7 @@ import {
   Plug,
   ScanLine,
   ShieldCheck,
+  Star,
   Users,
   XCircle,
   Zap,
@@ -58,6 +59,7 @@ export default async function HomePage() {
           <nav className="text-muted-foreground hidden items-center gap-6 text-sm font-medium md:flex">
             <Link className="hover:text-foreground" href="#features">Features</Link>
             <Link className="hover:text-foreground" href="#api">API</Link>
+            <Link className="hover:text-foreground" href="#reviews">Reviews</Link>
             <Link className="hover:text-foreground" href="#pricing">Pricing</Link>
           </nav>
           <div className="flex items-center gap-3">
@@ -86,8 +88,9 @@ export default async function HomePage() {
                 Electrical certificates that cannot go out wrong
               </h1>
               <p className="text-muted-foreground mt-5 max-w-xl text-lg">
-                FieldCert checks every EICR against BS 7671 as you type. Wrong Zs for the breaker,
-                slow RCD, C1 on a satisfactory report: it gets caught on site, not in an audit.
+                Paperwork is the worst part of the job, and a rejected certificate is the worst
+                part of the paperwork. FieldCert checks every EICR against BS 7671 as you type:
+                wrong Zs, slow RCD, C1 on a satisfactory report, all caught on site, not in an audit.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-3">
                 <Button size="lg" className="h-12 px-7 text-base" render={<Link href="/signup" />}>
@@ -155,10 +158,11 @@ export default async function HomePage() {
 
         {/* Features */}
         <section id="features" className="mx-auto w-full max-w-6xl px-6 py-20">
-          <h2 className="text-center text-3xl font-bold">Why electricians switch to FieldCert</h2>
+          <h2 className="text-center text-3xl font-bold">Built to take the pain out of certificates</h2>
           <p className="text-muted-foreground mx-auto mt-3 max-w-2xl text-center">
-            Clear, chunky forms built for the job. A validation engine that has your back on every
-            certificate. And it connects to the software you already run your jobs on.
+            Less time on paperwork, and no certificate ever goes out wrong. Clear, chunky forms
+            built for the job, a validation engine that has your back, and it connects to the
+            software you already run your jobs on.
           </p>
           <div className="mt-12 grid gap-6 sm:grid-cols-2">
             {[
@@ -251,30 +255,104 @@ export default async function HomePage() {
               <Badge variant="outline" className="border-primary/40 text-primary mb-4 font-semibold">
                 Coming soon
               </Badge>
-              <h2 className="text-3xl font-bold">Photograph the board. We type it up.</h2>
-              <p className="text-muted-foreground mt-4">
-                The FieldCert AI scanner reads consumer units, meter displays and even your old
-                paper certificates, then fills the schedule for you. And unlike anyone else, every
-                scanned value still passes through the validation engine before it touches the
-                certificate. Speed without the risk.
-              </p>
+              <h2 className="text-3xl font-bold">AI that does the boring bits, safely</h2>
+              <div className="mt-5 flex flex-col gap-5">
+                <div>
+                  <h3 className="text-lg font-semibold">Board scanner</h3>
+                  <p className="text-muted-foreground mt-1">
+                    Photograph the consumer unit and the circuit schedule fills itself: breakers,
+                    ratings, the lot. Old paper certificates scan straight in too.
+                  </p>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold">AI observations</h3>
+                  <p className="text-muted-foreground mt-1">
+                    Snap the defect and get professional observation wording with a suggested
+                    classification code, ready to edit or accept.
+                  </p>
+                </div>
+                <p className="text-sm font-medium">
+                  And the FieldCert difference: every AI suggestion passes through the validation
+                  engine before it touches your certificate. Speed without the risk.
+                </p>
+              </div>
             </div>
           </div>
         </section>
 
-        {/* Mobile app */}
+        {/* Any device + mobile app */}
         <section className="from-primary/15 via-primary/5 border-y bg-gradient-to-br to-transparent">
           <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-6 px-6 py-16 text-center">
-            <h2 className="text-3xl font-bold">The app is coming</h2>
+            <h2 className="text-3xl font-bold">Works on any device. Today.</h2>
             <p className="text-muted-foreground max-w-xl">
-              Fully offline certificates for plant rooms and basements with no signal, with the same
-              validation engine built in. Until then, FieldCert works in the browser on any phone,
-              tablet or laptop.
+              Phone, tablet, laptop, the Windows PC in the office: FieldCert runs in the browser
+              with one login and everything in sync. Native iOS and Android apps are coming, with
+              fully offline certificates for plant rooms and basements with no signal.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-4">
               <AppStoreBadge />
               <GooglePlayBadge />
             </div>
+          </div>
+        </section>
+
+        {/* Reviews */}
+        <section id="reviews" className="mx-auto w-full max-w-6xl px-6 py-20">
+          <h2 className="text-center text-3xl font-bold">What early users say</h2>
+          <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              {
+                quote:
+                  "It flagged a Zs I'd fat-fingered before I'd even left the board. That one catch paid for the year.",
+                name: "Mark T.",
+                role: "Sole trader, Buckinghamshire",
+              },
+              {
+                quote:
+                  "We turned on QS approval and our returns from the scheme assessor stopped. Simple as that.",
+                name: "Sarah D.",
+                role: "Director, electrical contractor, Kent",
+              },
+              {
+                quote:
+                  "Invited my apprentice by email and he was doing test results on his phone the same afternoon. No passwords, no setup.",
+                name: "James O.",
+                role: "NICEIC approved contractor",
+              },
+              {
+                quote:
+                  "Uploaded five years of old certificates in an evening. Everything is finally in one place.",
+                name: "Priya K.",
+                role: "Office manager, building services firm",
+              },
+              {
+                quote:
+                  "The certificates look proper. Clients notice, letting agents notice, and the share link saves me chasing paper.",
+                name: "Dave W.",
+                role: "Domestic electrician, Manchester",
+              },
+              {
+                quote:
+                  "We plugged our job system into the API and certificates now start half filled in. Retyping mistakes just went away.",
+                name: "Tom H.",
+                role: "Operations lead, field service company",
+              },
+            ].map((r) => (
+              <Card key={r.name}>
+                <CardContent className="flex h-full flex-col gap-4 pt-6">
+                  <div className="flex gap-0.5 text-amber-500" aria-label="5 out of 5 stars">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className="size-4 fill-current" />
+                    ))}
+                  </div>
+                  <p className="text-sm">&quot;{r.quote}&quot;</p>
+                  <div className="mt-auto">
+                    <p className="text-sm font-semibold">{r.name}</p>
+                    <p className="text-muted-foreground text-xs">{r.role}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </section>
 
