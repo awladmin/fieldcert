@@ -414,13 +414,13 @@ export function SignupWizard() {
                     Resend the code
                   </button>
                 )}
-                <p className="flex items-center justify-center gap-1.5">
-                  <MailWarning className="size-3.5 shrink-0 text-amber-500" />
-                  <span>
-                    <span className="font-semibold">Did not get the email?</span> Check your junk or
-                    spam folder, or click the link inside it instead.
-                  </span>
-                </p>
+                <div className="flex flex-col items-center gap-0.5">
+                  <p className="flex items-center gap-1.5">
+                    <MailWarning className="size-3.5 text-amber-500" />
+                    <span className="font-semibold">Did not get the email?</span>
+                  </p>
+                  <p>Check your junk or spam folder, or click the link inside it instead.</p>
+                </div>
               </div>
 
               <Button type="submit" className="h-12 text-base" disabled={pending || code.length !== 6}>
