@@ -1,10 +1,11 @@
 "use server";
 
-import { redirect } from "next/navigation";
-import { requireUser } from "@/lib/auth";
+import { revalidatePath } from "next/cache";
+import { requireAdmin, requireUser } from "@/lib/auth";
 
-export interface OrgFormState {
+export interface StepResult {
   error?: string;
+  ok?: boolean;
 }
 
 function slugify(name: string) {
@@ -15,19 +16,79 @@ function slugify(name: string) {
     .slice(0, 40);
 }
 
-export async function createOrg(_prev: OrgFormState, formData: FormData): Promise<OrgFormState> {
-  const name = String(formData.get("name") ?? "").trim();
-  if (!name) return { error: "Enter your company or trading name" };
+export async function saveProfileName(fullName: string): Promise<StepResult> {
+  const name = fullName.trim();
+  if (!name) return { error: "Enter your name" };
+  const { supabase, user } = await requireUser();
+  const { error } = await supabase
+    .from("profiles")
+    .upsert({ id: user.id, full_name: name, email: user.email });
+  if (error) return { error: error.message };
+  return { ok: true };
+}
+
+export async function createOrg(
+  name: string,
+  accountType: "individual" | "business"
+): Promise<StepResult> {
+  const orgName = name.trim();
+  if (!orgName) return { error: "Enter a company or trading name" };
 
   const { supabase } = await requireUser();
-  const base = slugify(name) || "org";
+  const base = slugify(orgName) || "org";
 
-  // Retry with a numeric suffix if the slug is taken.
   for (let attempt = 0; attempt < 3; attempt++) {
     const slug = attempt === 0 ? base : `${base}-${Math.floor(Math.random() * 10000)}`;
-    const { error } = await supabase.rpc("create_org", { org_name: name, org_slug: slug });
-    if (!error) redirect("/dashboard");
+    const { error } = await supabase.rpc("create_org", {
+      org_name: orgName,
+      org_slug: slug,
+      org_account_type: accountType,
+    });
+    if (!error) return { ok: true };
     if (!error.message.includes("duplicate key")) return { error: error.message };
   }
-  return { error: "Could not create the organisation — try a different name" };
+  return { error: "Could not create the organisation. Try a different name" };
+}
+
+/**
+ * Mock checkout: records the chosen plan and marks the subscription active.
+ * Swap for a real Stripe Checkout session when billing goes live.
+ */
+export async function activateSubscription(seats: number): Promise<StepResult> {
+  const { supabase, user } = await requireUser();
+  const { data: membership } = await supabase
+    .from("org_members")
+    .select("org_id, role, orgs(account_type)")
+    .eq("user_id", user.id)
+    .limit(1)
+    .maybeSingle();
+  if (!membership || membership.role !== "admin") return { error: "Only an admin can set up billing" };
+
+  const accountType = membership.orgs?.account_type ?? "business";
+  const plan = accountType === "individual" ? "individual" : "business";
+  const seatCount = accountType === "individual" ? 1 : Math.max(1, Math.min(200, Math.round(seats)));
+
+  const { error } = await supabase
+    .from("orgs")
+    .update({ plan, subscription_status: "active", seats: seatCount })
+    .eq("id", membership.org_id);
+  if (error) return { error: error.message };
+  return { ok: true };
+}
+
+export async function updateOrgSettings(input: {
+  name?: string;
+  qsApprovalRequired?: boolean;
+}): Promise<StepResult> {
+  const { supabase, org } = await requireAdmin();
+  const patch: { name?: string; qs_approval_required?: boolean } = {};
+  if (input.name !== undefined) {
+    if (!input.name.trim()) return { error: "Organisation name cannot be empty" };
+    patch.name = input.name.trim();
+  }
+  if (input.qsApprovalRequired !== undefined) patch.qs_approval_required = input.qsApprovalRequired;
+  const { error } = await supabase.from("orgs").update(patch).eq("id", org.orgId);
+  if (error) return { error: error.message };
+  revalidatePath("/settings");
+  return { ok: true };
 }

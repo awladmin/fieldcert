@@ -49,7 +49,7 @@ export function AuthCard() {
           {linkError && (
             <Alert variant="destructive">
               <AlertDescription>
-                That sign-in link didn&apos;t work — it may have expired. Request a new code below.
+                That sign-in link didn&apos;t work. It may have expired. Request a new code below.
               </AlertDescription>
             </Alert>
           )}
@@ -69,7 +69,7 @@ export function AuthCard() {
                 {requesting ? "Sending…" : "Email me a sign-in code"}
               </Button>
               <p className="text-muted-foreground text-xs">
-                No password needed — we email you a one-time code. New here? This also creates
+                No password needed: we email you a one-time code. New here? This also creates
                 your account.
               </p>
             </form>
@@ -87,7 +87,7 @@ export function AuthCard() {
                 </InputOTP>
               </div>
               <p className="text-muted-foreground text-xs">
-                You can also just click the link in the email — both work.
+                You can also just click the link in the email. Both work.
               </p>
               {error && (
                 <Alert variant="destructive">

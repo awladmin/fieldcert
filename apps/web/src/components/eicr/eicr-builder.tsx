@@ -3,10 +3,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Plus, Trash2 } from "lucide-react";
+import { Download, Link2, Plus, Trash2 } from "lucide-react";
 import type { Eicr } from "@fieldcert/cert-schemas";
 import { validateEicr, type ValidationIssue } from "@fieldcert/rules-engine";
-import { issueCertificate, saveCertificate } from "@/actions/certificates";
+import {
+  createShareLink,
+  issueCertificate,
+  returnToDraft,
+  saveCertificate,
+  submitForApproval,
+} from "@/actions/certificates";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -23,10 +29,10 @@ import { NumberField, SelectField, TextField, FieldIssues } from "./fields";
 import { ValidationPanel } from "./validation-panel";
 
 const OBSERVATION_CODES = [
-  { value: "C1", label: "C1 — Danger present" },
-  { value: "C2", label: "C2 — Potentially dangerous" },
-  { value: "C3", label: "C3 — Improvement recommended" },
-  { value: "FI", label: "FI — Further investigation" },
+  { value: "C1", label: "C1: Danger present" },
+  { value: "C2", label: "C2: Potentially dangerous" },
+  { value: "C3", label: "C3: Improvement recommended" },
+  { value: "FI", label: "FI: Further investigation" },
 ];
 
 const EARTHING = ["TN-S", "TN-C-S", "TT", "IT"].map((v) => ({ value: v, label: v }));
@@ -40,16 +46,23 @@ export function EicrBuilder({
   id,
   status,
   initialData,
+  role,
+  qsApprovalRequired,
 }: {
   id: string;
   status: string;
   initialData: Eicr;
+  role: "admin" | "qs" | "engineer" | "office";
+  qsApprovalRequired: boolean;
 }) {
   const router = useRouter();
   const [cert, setCert] = useState<Eicr>(initialData);
   const [saveState, setSaveState] = useState<"saved" | "saving" | "error">("saved");
   const [issuing, startIssuing] = useTransition();
   const readOnly = status !== "draft";
+
+  const engineerMustSubmit = qsApprovalRequired && role === "engineer";
+  const canApprove = role === "qs" || role === "admin";
 
   // Live statutory validation — the same engine the server runs at issue time.
   const validation = useMemo(
@@ -90,11 +103,55 @@ export function EicrBuilder({
   function onIssue() {
     startIssuing(async () => {
       const result = await issueCertificate(id);
-      if (result.issued) {
+      if (result.ok) {
         toast.success("Certificate issued");
         router.refresh();
       } else {
         toast.error(result.error ?? "Could not issue certificate");
+      }
+    });
+  }
+
+  function onSubmitForApproval() {
+    startIssuing(async () => {
+      const result = await submitForApproval(id);
+      if (result.ok) {
+        toast.success("Submitted for approval");
+        router.refresh();
+      } else {
+        toast.error(result.error ?? "Could not submit certificate");
+      }
+    });
+  }
+
+  function onReturnToDraft() {
+    startIssuing(async () => {
+      const result = await returnToDraft(id);
+      if (result.ok) {
+        toast.success("Returned to draft");
+        router.refresh();
+      } else {
+        toast.error(result.error ?? "Could not return certificate");
+      }
+    });
+  }
+
+  function onDownloadPdf() {
+    startIssuing(async () => {
+      const result = await createShareLink(id);
+      if (result.url) window.open(result.url, "_blank");
+      else toast.error(result.error ?? "Could not fetch the PDF");
+    });
+  }
+
+  function onCopyShareLink() {
+    startIssuing(async () => {
+      const result = await createShareLink(id);
+      if (result.url) {
+        await navigator.clipboard.writeText(result.url);
+        toast.success("Share link copied. It stays valid for 30 days");
+      } else {
+        toast.error(result.error ?? "Could not create a share link");
       }
     });
   }
@@ -130,13 +187,40 @@ export function EicrBuilder({
           <div className="flex items-center gap-3">
             {!readOnly && (
               <span className="text-muted-foreground text-xs">
-                {saveState === "saving" ? "Saving…" : saveState === "error" ? "Save failed" : "Saved"}
+                {saveState === "saving" ? "Saving" : saveState === "error" ? "Save failed" : "Saved"}
               </span>
             )}
-            {!readOnly && (
-              <Button onClick={onIssue} disabled={!validation.issuable || issuing}>
-                {issuing ? "Issuing…" : "Issue certificate"}
+            {status === "draft" && engineerMustSubmit && (
+              <Button onClick={onSubmitForApproval} disabled={!validation.issuable || issuing}>
+                {issuing ? "Submitting" : "Submit for approval"}
               </Button>
+            )}
+            {status === "draft" && !engineerMustSubmit && (
+              <Button onClick={onIssue} disabled={!validation.issuable || issuing}>
+                {issuing ? "Issuing" : "Issue certificate"}
+              </Button>
+            )}
+            {status === "pending_approval" && canApprove && (
+              <>
+                <Button variant="outline" onClick={onReturnToDraft} disabled={issuing}>
+                  Return to draft
+                </Button>
+                <Button onClick={onIssue} disabled={issuing}>
+                  {issuing ? "Issuing" : "Approve and issue"}
+                </Button>
+              </>
+            )}
+            {status === "issued" && (
+              <>
+                <Button variant="outline" onClick={onDownloadPdf} disabled={issuing}>
+                  <Download className="size-4" />
+                  Download PDF
+                </Button>
+                <Button variant="outline" onClick={onCopyShareLink} disabled={issuing}>
+                  <Link2 className="size-4" />
+                  Copy share link
+                </Button>
+              </>
             )}
           </div>
         </div>
@@ -226,7 +310,7 @@ export function EicrBuilder({
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-base">
-                Circuits {board?.designation ? `— ${board.designation}` : ""}
+                Circuits {board?.designation ? `(${board.designation})` : ""}
               </CardTitle>
               <Button type="button" variant="outline" size="sm" onClick={addCircuit}>
                 <Plus className="size-4" /> Add circuit
@@ -235,7 +319,7 @@ export function EicrBuilder({
             <CardContent>
               {!board || board.circuits.length === 0 ? (
                 <p className="text-muted-foreground text-sm">
-                  No circuits yet. Add each circuit with its protective device and test results — Zs is
+                  No circuits yet. Add each circuit with its protective device and test results. Zs is
                   checked live against BS 7671 Table 41.3.
                 </p>
               ) : (
@@ -248,7 +332,7 @@ export function EicrBuilder({
                         <TableHead className="w-28">Curve</TableHead>
                         <TableHead className="w-24">Rating (A)</TableHead>
                         <TableHead className="w-28">Zs (Ω)</TableHead>
-                        <TableHead className="w-28">IR L–E (MΩ)</TableHead>
+                        <TableHead className="w-28">IR L-E (MΩ)</TableHead>
                         <TableHead className="w-28">RCD (ms)</TableHead>
                         <TableHead className="w-20">Polarity</TableHead>
                         <TableHead className="w-10" />
@@ -294,7 +378,7 @@ export function EicrBuilder({
                                   })
                                 }
                               >
-                                <option value="">—</option>
+                                <option value="">-</option>
                                 {CURVES.map((c) => (
                                   <option key={c.value} value={c.value}>{c.label}</option>
                                 ))}

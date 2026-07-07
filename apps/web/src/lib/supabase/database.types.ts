@@ -194,6 +194,51 @@ export type Database = {
           },
         ]
       }
+      invites: {
+        Row: {
+          accepted_at: string | null
+          created_at: string
+          created_by: string
+          email: string
+          id: string
+          org_id: string
+          role: Database["public"]["Enums"]["org_role"]
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string
+          created_by: string
+          email: string
+          id?: string
+          org_id: string
+          role?: Database["public"]["Enums"]["org_role"]
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string
+          created_by?: string
+          email?: string
+          id?: string
+          org_id?: string
+          role?: Database["public"]["Enums"]["org_role"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invites_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invites_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       org_members: {
         Row: {
           created_at: string
@@ -232,52 +277,67 @@ export type Database = {
       }
       orgs: {
         Row: {
+          account_type: string
           branding: Json
           created_at: string
           id: string
           name: string
+          plan: string | null
           policy_rules: Json
           qs_approval_required: boolean
+          seats: number
           slug: string
           stripe_customer_id: string | null
+          subscription_status: string
         }
         Insert: {
+          account_type?: string
           branding?: Json
           created_at?: string
           id?: string
           name: string
+          plan?: string | null
           policy_rules?: Json
           qs_approval_required?: boolean
+          seats?: number
           slug: string
           stripe_customer_id?: string | null
+          subscription_status?: string
         }
         Update: {
+          account_type?: string
           branding?: Json
           created_at?: string
           id?: string
           name?: string
+          plan?: string | null
           policy_rules?: Json
           qs_approval_required?: boolean
+          seats?: number
           slug?: string
           stripe_customer_id?: string | null
+          subscription_status?: string
         }
         Relationships: []
       }
       profiles: {
         Row: {
           created_at: string
+          email: string | null
           full_name: string | null
           id: string
           phone: string | null
         }
         Insert: {
           created_at?: string
+          email?: string | null
           full_name?: string | null
           id: string
           phone?: string | null
         }
         Update: {
           created_at?: string
+          email?: string | null
           full_name?: string | null
           id?: string
           phone?: string | null
@@ -331,15 +391,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      create_org: {
-        Args: { org_name: string; org_slug: string }
-        Returns: string
-      }
+      claim_invites: { Args: never; Returns: number }
+      create_org:
+        | { Args: { org_name: string; org_slug: string }; Returns: string }
+        | {
+            Args: {
+              org_account_type?: string
+              org_name: string
+              org_slug: string
+            }
+            Returns: string
+          }
       is_org_member: { Args: { check_org: string }; Returns: boolean }
       org_role_of: {
         Args: { check_org: string }
         Returns: Database["public"]["Enums"]["org_role"]
       }
+      shares_org_with: { Args: { other: string }; Returns: boolean }
     }
     Enums: {
       certificate_kind: "EICR" | "EIC" | "MEIWC"

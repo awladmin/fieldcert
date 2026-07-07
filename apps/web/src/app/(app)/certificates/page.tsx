@@ -12,7 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-export const metadata = { title: "Certificates — FieldCert" };
+export const metadata = { title: "Certificates | FieldCert" };
 
 export default async function CertificatesPage() {
   const { supabase, org } = await requireOrg();
@@ -57,16 +57,16 @@ export default async function CertificatesPage() {
                   </Link>
                 </TableCell>
                 <TableCell>
-                  {addr?.line1 ? `${addr.line1}${addr.postcode ? `, ${addr.postcode}` : ""}` : "—"}
+                  {addr?.line1 ? `${addr.line1}${addr.postcode ? `, ${addr.postcode}` : ""}` : "-"}
                 </TableCell>
-                <TableCell>{data?.client?.name ?? "—"}</TableCell>
+                <TableCell>{data?.client?.name ?? "-"}</TableCell>
                 <TableCell>
                   <StatusBadge status={c.status} />
                 </TableCell>
                 <TableCell className="text-right text-sm tabular-nums">
                   {validation
                     ? `${validation.errorCount ?? 0} errors · ${validation.warningCount ?? 0} warnings`
-                    : "—"}
+                    : "-"}
                 </TableCell>
               </TableRow>
             );

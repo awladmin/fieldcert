@@ -93,7 +93,7 @@ const assessmentConsistency: EicrRule = {
           "eicr.assessment.consistency",
           "overallAssessment",
           "warning",
-          "Assessment is Unsatisfactory but no C1, C2 or FI observations are recorded — add the observation that justifies it"
+          "Assessment is Unsatisfactory but no C1, C2 or FI observations are recorded. Add the observation that justifies it"
         ),
       ];
     }
@@ -131,7 +131,7 @@ const zsWithinLimits: EicrRule = {
               "eicr.zs.max",
               field,
               "warning",
-              `Zs ${tr.zsOhms}Ω exceeds 80% of the ${max.toFixed(2)}Ω maximum for a ${device} device — verify against the temperature-corrected limit`
+              `Zs ${tr.zsOhms}Ω exceeds 80% of the ${max.toFixed(2)}Ω maximum for a ${device} device. Verify against the temperature-corrected limit`
             )
           );
         }
@@ -200,7 +200,7 @@ const insulationResistance: EicrRule = {
                 "eicr.insulation-resistance.min",
                 field,
                 "warning",
-                `Insulation resistance ${value}MΩ is below 2MΩ — further investigation is recommended (GN3)`
+                `Insulation resistance ${value}MΩ is below 2MΩ. Further investigation is recommended (GN3)`
               )
             );
           }

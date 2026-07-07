@@ -3,11 +3,11 @@ import { eicr, emptyEicr } from "@fieldcert/cert-schemas";
 import { requireOrg } from "@/lib/auth";
 import { EicrBuilder } from "@/components/eicr/eicr-builder";
 
-export const metadata = { title: "EICR — FieldCert" };
+export const metadata = { title: "EICR | FieldCert" };
 
 export default async function CertificatePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { supabase } = await requireOrg();
+  const { supabase, org } = await requireOrg();
   const { data: cert } = await supabase
     .from("certificates")
     .select("id, kind, status, data")
@@ -18,5 +18,13 @@ export default async function CertificatePage({ params }: { params: Promise<{ id
   const parsed = eicr.safeParse(cert.data);
   const initialData = parsed.success ? parsed.data : emptyEicr();
 
-  return <EicrBuilder id={cert.id} status={cert.status} initialData={initialData} />;
+  return (
+    <EicrBuilder
+      id={cert.id}
+      status={cert.status}
+      initialData={initialData}
+      role={org.role}
+      qsApprovalRequired={org.qsApprovalRequired}
+    />
+  );
 }

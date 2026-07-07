@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FileCheck2, LayoutDashboard, LogOut, ScrollText } from "lucide-react";
+import { FileCheck2, LayoutDashboard, LogOut, ScrollText, Settings, Users } from "lucide-react";
 import { signOut } from "@/actions/auth";
 import {
   Sidebar,
@@ -19,8 +19,10 @@ import {
 import { Button } from "@/components/ui/button";
 
 const NAV = [
-  { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { title: "Certificates", href: "/certificates", icon: ScrollText },
+  { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard, adminOnly: false },
+  { title: "Certificates", href: "/certificates", icon: ScrollText, adminOnly: false },
+  { title: "Team", href: "/team", icon: Users, adminOnly: true },
+  { title: "Settings", href: "/settings", icon: Settings, adminOnly: true },
 ];
 
 export function AppSidebar({
@@ -50,7 +52,7 @@ export function AppSidebar({
           <SidebarGroupLabel>Workspace</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {NAV.map((item) => (
+              {NAV.filter((item) => !item.adminOnly || role === "admin").map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
                     render={<Link href={item.href} />}

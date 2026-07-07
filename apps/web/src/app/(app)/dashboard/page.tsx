@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/status-badge";
 
-export const metadata = { title: "Dashboard — FieldCert" };
+export const metadata = { title: "Dashboard | FieldCert" };
 
 export default async function DashboardPage() {
   const { supabase, org } = await requireOrg();
@@ -16,15 +16,17 @@ export default async function DashboardPage() {
     .order("updated_at", { ascending: false })
     .limit(5);
 
-  const counts = { draft: 0, issued: 0 };
+  const counts = { draft: 0, pending: 0, issued: 0 };
   const { data: allStatuses } = await supabase
     .from("certificates")
     .select("status")
     .eq("org_id", org.orgId);
   for (const row of allStatuses ?? []) {
     if (row.status === "draft") counts.draft++;
+    if (row.status === "pending_approval") counts.pending++;
     if (row.status === "issued") counts.issued++;
   }
+  const showApprovals = org.qsApprovalRequired || counts.pending > 0;
 
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-6">
@@ -35,13 +37,21 @@ export default async function DashboardPage() {
         </form>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className={showApprovals ? "grid grid-cols-3 gap-4" : "grid grid-cols-2 gap-4"}>
         <Card>
           <CardHeader>
             <CardDescription>Draft certificates</CardDescription>
             <CardTitle className="text-3xl tabular-nums">{counts.draft}</CardTitle>
           </CardHeader>
         </Card>
+        {showApprovals && (
+          <Card>
+            <CardHeader>
+              <CardDescription>Awaiting approval</CardDescription>
+              <CardTitle className="text-3xl tabular-nums">{counts.pending}</CardTitle>
+            </CardHeader>
+          </Card>
+        )}
         <Card>
           <CardHeader>
             <CardDescription>Issued certificates</CardDescription>
@@ -68,7 +78,7 @@ export default async function DashboardPage() {
                     >
                       <span className="text-sm">
                         {c.kind}
-                        {addr?.line1 ? ` — ${addr.line1}${addr.postcode ? `, ${addr.postcode}` : ""}` : " — no address yet"}
+                        {addr?.line1 ? `: ${addr.line1}${addr.postcode ? `, ${addr.postcode}` : ""}` : ": no address yet"}
                       </span>
                       <StatusBadge status={c.status} />
                     </Link>
@@ -78,7 +88,7 @@ export default async function DashboardPage() {
             </ul>
           ) : (
             <p className="text-muted-foreground text-sm">
-              No certificates yet — create your first EICR to see the validation engine in action.
+              No certificates yet. Create your first EICR to see the validation engine in action.
             </p>
           )}
         </CardContent>

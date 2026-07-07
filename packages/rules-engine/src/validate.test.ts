@@ -20,7 +20,7 @@ function baseCert(): Eicr {
   };
 }
 
-describe("validateEicr — completeness", () => {
+describe("validateEicr: completeness", () => {
   it("an empty draft has no completeness errors at draft stage", () => {
     const result = validateEicr(emptyEicr(), { today: TODAY, stage: "draft" });
     expect(result.issues.filter((i) => i.rule === "eicr.completeness")).toHaveLength(0);
@@ -39,7 +39,7 @@ describe("validateEicr — completeness", () => {
   });
 });
 
-describe("validateEicr — assessment consistency", () => {
+describe("validateEicr: assessment consistency", () => {
   it("rejects satisfactory verdict when a C1 observation exists", () => {
     const cert: Eicr = {
       ...baseCert(),
@@ -74,7 +74,7 @@ describe("validateEicr — assessment consistency", () => {
   });
 });
 
-describe("validateEicr — Zs limits (BS 7671 Table 41.3)", () => {
+describe("validateEicr: Zs limits (BS 7671 Table 41.3)", () => {
   it("computes tabulated max Zs for a B32", () => {
     const max = maxZsOhms({ id: "c1", ocpd: { curve: "B", ratingA: 32 } });
     expect(max).toBeCloseTo(1.37, 2);
@@ -111,7 +111,7 @@ describe("validateEicr — Zs limits (BS 7671 Table 41.3)", () => {
   });
 });
 
-describe("validateEicr — RCD, IR, polarity, dates", () => {
+describe("validateEicr: RCD, IR, polarity, dates", () => {
   it("errors when a general RCD takes longer than 300ms", () => {
     const cert: Eicr = {
       ...baseCert(),

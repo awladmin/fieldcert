@@ -33,6 +33,6 @@ export interface ValidationResult {
   issues: ValidationIssue[];
   errorCount: number;
   warningCount: number;
-  /** True when there are no error-severity issues — the certificate may be issued */
+  /** True when there are no error-severity issues; the certificate may be issued */
   issuable: boolean;
 }
