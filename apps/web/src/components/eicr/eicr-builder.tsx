@@ -22,6 +22,7 @@ import { DraftObservationButton } from "./ai-buttons";
 import { BoardsSection } from "./boards-section";
 import { ScheduleSection } from "./schedule-section";
 import { ValidatePanel } from "./validate-panel";
+import { VoidCertificate } from "./void-certificate";
 import { NumberField, SelectField, TextField } from "./fields";
 
 const OBSERVATION_CODES = [
@@ -75,6 +76,7 @@ export function EicrBuilder({
   status,
   initialData,
   jobNumber,
+  voidReason,
   role,
   qsApprovalRequired,
 }: {
@@ -82,6 +84,7 @@ export function EicrBuilder({
   status: string;
   initialData: Eicr;
   jobNumber?: string | null;
+  voidReason?: string | null;
   role: "admin" | "qs" | "engineer" | "office";
   qsApprovalRequired: boolean;
 }) {
@@ -190,6 +193,18 @@ export function EicrBuilder({
 
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-6">
+      {status === "void" && (
+        <div className="flex items-start gap-3 rounded-xl bg-red-500/10 p-4 text-red-700 dark:text-red-300">
+          <XCircle className="mt-0.5 size-5 shrink-0" />
+          <div>
+            <p className="font-semibold">This certificate has been voided</p>
+            <p className="text-sm">
+              {voidReason ?? "See the audit trail below for details."} It remains on the register
+              permanently and can no longer be shared or downloaded.
+            </p>
+          </div>
+        </div>
+      )}
       {/* Sticky summary bar: state, live validation counts, actions */}
       <div className="bg-background/95 sticky top-0 z-10 -mx-2 rounded-xl border px-4 py-3 shadow-sm backdrop-blur">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -251,6 +266,7 @@ export function EicrBuilder({
                 </Button>
               </>
             )}
+            {status === "issued" && canApprove && <VoidCertificate id={id} reference={cert.reference ?? "this certificate"} />}
             {status === "issued" && (
               <>
                 <Button

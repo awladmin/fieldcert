@@ -90,6 +90,58 @@ export type Database = {
           },
         ]
       }
+      certificate_events: {
+        Row: {
+          actor: string | null
+          certificate_id: string
+          created_at: string
+          detail: Json
+          event: string
+          id: string
+          org_id: string
+        }
+        Insert: {
+          actor?: string | null
+          certificate_id: string
+          created_at?: string
+          detail?: Json
+          event: string
+          id?: string
+          org_id: string
+        }
+        Update: {
+          actor?: string | null
+          certificate_id?: string
+          created_at?: string
+          detail?: Json
+          event?: string
+          id?: string
+          org_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certificate_events_actor_fkey"
+            columns: ["actor"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "certificate_events_certificate_id_fkey"
+            columns: ["certificate_id"]
+            isOneToOne: false
+            referencedRelation: "certificates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "certificate_events_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       certificates: {
         Row: {
           approved_by: string | null

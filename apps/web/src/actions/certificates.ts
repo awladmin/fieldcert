@@ -21,6 +21,28 @@ function certReference(id: string) {
   return `FC-${id.slice(0, 8).toUpperCase()}`;
 }
 
+/**
+ * Appends to the certificate's audit trail. Never fatal: the business action
+ * has already succeeded, so a failed log line is reported, not thrown.
+ */
+async function recordEvent(
+  supabase: Awaited<ReturnType<typeof requireOrg>>["supabase"],
+  orgId: string,
+  certificateId: string,
+  event: string,
+  actor: string,
+  detail: Record<string, unknown> = {}
+) {
+  const { error } = await supabase.from("certificate_events").insert({
+    org_id: orgId,
+    certificate_id: certificateId,
+    event,
+    actor,
+    detail: detail as Json,
+  });
+  if (error) console.error("audit event failed", { certificateId, event, message: error.message });
+}
+
 const REFERENCE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
 const UNIQUE_VIOLATION = "23505";
 
@@ -184,6 +206,10 @@ export async function createCertificate(
     }
     return { error: error.message };
   }
+  await recordEvent(supabase, org.orgId, cert.id, "created", user.id, {
+    reference,
+    ...(jobNumber ? { jobNumber } : {}),
+  });
   redirect(`/certificates/${cert.id}`);
 }
 
@@ -267,7 +293,7 @@ async function renderAndStorePdf(
 
 /** Engineers submit for approval when the org requires QS sign-off. */
 export async function submitForApproval(id: string): Promise<FlowResult> {
-  const { supabase, org } = await requireOrg();
+  const { supabase, user, org } = await requireOrg();
   if (!org.qsApprovalRequired) return { error: "This organisation issues directly; approval is not required" };
 
   const loaded = await loadDraft(supabase, id);
@@ -284,6 +310,7 @@ export async function submitForApproval(id: string): Promise<FlowResult> {
     .eq("status", "draft");
   if (error) return { error: error.message };
 
+  await recordEvent(supabase, org.orgId, id, "submitted", user.id);
   revalidatePath(`/certificates/${id}`);
   revalidatePath("/certificates");
   return { ok: true };
@@ -291,7 +318,7 @@ export async function submitForApproval(id: string): Promise<FlowResult> {
 
 /** QS or admin sends a submitted certificate back for changes. */
 export async function returnToDraft(id: string): Promise<FlowResult> {
-  const { supabase, org } = await requireOrg();
+  const { supabase, user, org } = await requireOrg();
   if (org.role !== "qs" && org.role !== "admin") return { error: "Only a QS or admin can return certificates" };
 
   const { error } = await supabase
@@ -301,6 +328,7 @@ export async function returnToDraft(id: string): Promise<FlowResult> {
     .eq("status", "pending_approval");
   if (error) return { error: error.message };
 
+  await recordEvent(supabase, org.orgId, id, "returned", user.id);
   revalidatePath(`/certificates/${id}`);
   revalidatePath("/certificates");
   return { ok: true };
@@ -350,6 +378,10 @@ export async function issueCertificate(id: string): Promise<FlowResult> {
     .eq("status", fromStatus);
   if (error) return { error: error.message };
 
+  await recordEvent(supabase, org.orgId, id, "issued", user.id, {
+    reference,
+    ...(fromStatus === "pending_approval" ? { approvedFromSubmission: true } : {}),
+  });
   revalidatePath(`/certificates/${id}`);
   revalidatePath("/certificates");
   return { ok: true, validation: gate.validation };
@@ -414,6 +446,11 @@ async function importEasycert(
     });
   }
 
+  await recordEvent(supabase, org.orgId, cert.id, "imported", userId, {
+    source: "easycert",
+    fileName: file.name,
+    reference,
+  });
   revalidatePath("/certificates");
   const summaryParts = [parsed.clientName, parsed.addressLabel, parsed.inspectionDate].filter(Boolean);
   return {
@@ -451,16 +488,20 @@ export async function uploadLegacyCertificate(formData: FormData): Promise<FlowR
     .upload(path, file, { contentType: file.type });
   if (uploadError) return { error: uploadError.message };
 
-  const { error } = await supabase.from("certificates").insert({
-    org_id: org.orgId,
-    kind: "UPLOADED" as const,
-    status: "issued" as const,
-    reference,
-    data: toJson({ kind: "UPLOADED", fileName: file.name }),
-    created_by: user.id,
-    issued_at: new Date().toISOString(),
-    pdf_path: path,
-  });
+  const { data: uploaded, error } = await supabase
+    .from("certificates")
+    .insert({
+      org_id: org.orgId,
+      kind: "UPLOADED" as const,
+      status: "issued" as const,
+      reference,
+      data: toJson({ kind: "UPLOADED", fileName: file.name }),
+      created_by: user.id,
+      issued_at: new Date().toISOString(),
+      pdf_path: path,
+    })
+    .select("id")
+    .single();
   if (error) {
     await supabase.storage.from("fieldcert").remove([path]);
     if (error.code === UNIQUE_VIOLATION) {
@@ -469,6 +510,10 @@ export async function uploadLegacyCertificate(formData: FormData): Promise<FlowR
     return { error: error.message };
   }
 
+  await recordEvent(supabase, org.orgId, uploaded.id, "imported", user.id, {
+    source: "upload",
+    fileName: file.name,
+  });
   revalidatePath("/certificates");
   return { ok: true };
 }
@@ -488,10 +533,10 @@ export async function deleteCertificate(id: string): Promise<FlowResult> {
     .single();
   if (loadError) return { error: loadError.message };
   // Uploaded records are archived copies from other systems, so removable;
-  // certificates we issued are permanent (the database trigger enforces this
-  // even if this check were bypassed).
-  if (cert.status === "issued" && cert.kind !== "UPLOADED") {
-    return { error: "Issued certificates are legal records and cannot be deleted" };
+  // certificates we issued, including voided ones, are permanent (the
+  // database trigger backs this up even if the check were bypassed).
+  if ((cert.status === "issued" || cert.status === "void") && cert.kind !== "UPLOADED") {
+    return { error: "Issued and voided certificates are legal records and cannot be deleted" };
   }
 
   // Archived files (imported .easycert originals, uploaded PDFs) go with it.
@@ -513,7 +558,7 @@ export async function deleteCertificate(id: string): Promise<FlowResult> {
 
 /** Time-limited share link for the issued PDF (clients, landlords, agents). */
 export async function createShareLink(id: string): Promise<{ error?: string; url?: string }> {
-  const { supabase } = await requireOrg();
+  const { supabase, user, org } = await requireOrg();
   const { data: row, error } = await supabase
     .from("certificates")
     .select("pdf_path, status")
@@ -527,5 +572,97 @@ export async function createShareLink(id: string): Promise<{ error?: string; url
     .from("fieldcert")
     .createSignedUrl(row.pdf_path, THIRTY_DAYS, { download: true });
   if (signError) return { error: signError.message };
+
+  await recordEvent(supabase, org.orgId, id, "share_link_created", user.id, {
+    expiresInDays: 30,
+  });
   return { url: signed.signedUrl };
+}
+
+export interface VoidResult {
+  error?: string;
+  ok?: boolean;
+  /** The corrected draft, when reissue was requested */
+  newCertificateId?: string;
+}
+
+/**
+ * Voids an issued certificate, the only change the database permits, and
+ * optionally opens a corrected draft carrying the same data. The voided
+ * record stays in the register permanently with its reason on the audit
+ * trail.
+ */
+export async function voidCertificate(
+  id: string,
+  reason: string,
+  reissue: boolean
+): Promise<VoidResult> {
+  const { supabase, user, org } = await requireOrg();
+  if (org.role !== "qs" && org.role !== "admin") {
+    return { error: "Only a QS or admin can void an issued certificate" };
+  }
+  const trimmedReason = reason.trim();
+  if (!trimmedReason) return { error: "Give the reason for voiding; it goes on the permanent record" };
+
+  const { data: row, error: loadError } = await supabase
+    .from("certificates")
+    .select("id, status, kind, reference, job_number, customer_id, property_id, data")
+    .eq("id", id)
+    .single();
+  if (loadError) return { error: loadError.message };
+  if (row.status !== "issued" || row.kind === "UPLOADED") {
+    return { error: "Only issued certificates can be voided" };
+  }
+
+  const { error: voidError } = await supabase
+    .from("certificates")
+    .update({ status: "void" as const })
+    .eq("id", id)
+    .eq("status", "issued");
+  if (voidError) return { error: voidError.message };
+
+  let newCertificateId: string | undefined;
+  if (reissue) {
+    const parsed = eicr.safeParse(row.data);
+    if (parsed.success) {
+      const now = new Date();
+      const date = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
+      const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+      let suffix = "";
+      for (let i = 0; i < 4; i++) suffix += alphabet[Math.floor(Math.random() * alphabet.length)];
+      const newReference = `EICR-${date}-${suffix}`;
+      const data = { ...parsed.data, reference: newReference };
+      const { data: draft, error: draftError } = await supabase
+        .from("certificates")
+        .insert({
+          org_id: org.orgId,
+          kind: "EICR" as const,
+          reference: newReference,
+          job_number: row.job_number,
+          customer_id: row.customer_id,
+          property_id: row.property_id,
+          data: toJson(data),
+          validation: toJson(validateEicr(data, { today: todayIso(), stage: "draft" })),
+          created_by: user.id,
+          assigned_to: user.id,
+        })
+        .select("id")
+        .single();
+      if (!draftError) {
+        newCertificateId = draft.id;
+        await recordEvent(supabase, org.orgId, draft.id, "created", user.id, {
+          reference: newReference,
+          reissuedFrom: row.reference,
+        });
+      }
+    }
+  }
+
+  await recordEvent(supabase, org.orgId, id, "voided", user.id, {
+    reason: trimmedReason,
+    ...(newCertificateId ? { reissuedTo: newCertificateId } : {}),
+  });
+  revalidatePath(`/certificates/${id}`);
+  revalidatePath("/certificates");
+  return { ok: true, newCertificateId };
 }

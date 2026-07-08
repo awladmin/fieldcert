@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { eicr, emptyEicr } from "@fieldcert/cert-schemas";
 import { requireOrg } from "@/lib/auth";
 import { EicrBuilder } from "@/components/eicr/eicr-builder";
+import { CertificateTimeline, type TimelineEvent } from "@/components/certificate-timeline";
 import { UploadedCertificateView } from "@/components/uploaded-certificate-view";
 
 export const metadata = { title: "Certificate" };
@@ -9,20 +10,40 @@ export const metadata = { title: "Certificate" };
 export default async function CertificatePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { supabase, org } = await requireOrg();
-  const { data: cert } = await supabase
-    .from("certificates")
-    .select("id, kind, status, data, reference, job_number, created_at")
-    .eq("id", id)
-    .maybeSingle();
+  const [{ data: cert }, { data: eventRows }] = await Promise.all([
+    supabase
+      .from("certificates")
+      .select("id, kind, status, data, reference, job_number, created_at")
+      .eq("id", id)
+      .maybeSingle(),
+    supabase
+      .from("certificate_events")
+      .select("id, event, actor, detail, created_at, profiles(full_name, email)")
+      .eq("certificate_id", id)
+      .order("created_at", { ascending: true }),
+  ]);
   if (!cert) notFound();
+
+  const events: TimelineEvent[] = (eventRows ?? []).map((e) => ({
+    id: e.id,
+    event: e.event,
+    actorName: e.profiles?.full_name || e.profiles?.email || "System",
+    detail: (e.detail ?? {}) as Record<string, unknown>,
+    createdAt: e.created_at,
+  }));
+  const voidedEvent = events.find((e) => e.event === "voided");
+  const voidReason = typeof voidedEvent?.detail.reason === "string" ? voidedEvent.detail.reason : null;
 
   if (cert.kind === "UPLOADED") {
     return (
-      <UploadedCertificateView
-        id={cert.id}
-        reference={cert.reference ?? "Uploaded certificate"}
-        uploadedAt={cert.created_at}
-      />
+      <div className="mx-auto flex max-w-4xl flex-col gap-6">
+        <UploadedCertificateView
+          id={cert.id}
+          reference={cert.reference ?? "Uploaded certificate"}
+          uploadedAt={cert.created_at}
+        />
+        <CertificateTimeline events={events} />
+      </div>
     );
   }
 
@@ -30,13 +51,19 @@ export default async function CertificatePage({ params }: { params: Promise<{ id
   const initialData = parsed.success ? parsed.data : emptyEicr();
 
   return (
-    <EicrBuilder
-      id={cert.id}
-      status={cert.status}
-      initialData={initialData}
-      jobNumber={cert.job_number}
-      role={org.role}
-      qsApprovalRequired={org.qsApprovalRequired}
-    />
+    <div className="flex flex-col gap-6">
+      <EicrBuilder
+        id={cert.id}
+        status={cert.status}
+        initialData={initialData}
+        jobNumber={cert.job_number}
+        voidReason={voidReason}
+        role={org.role}
+        qsApprovalRequired={org.qsApprovalRequired}
+      />
+      <div className="mx-auto w-full max-w-4xl">
+        <CertificateTimeline events={events} />
+      </div>
+    </div>
   );
 }

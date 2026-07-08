@@ -287,6 +287,19 @@ export async function POST(request: Request) {
     installationId: installation.id,
   };
 
+  // Audit trail: API-created certificates carry the key owner's identity.
+  const logEvent = async (event: string, detail: Record<string, unknown>) => {
+    const { error: eventError } = await supabase.from("certificate_events").insert({
+      org_id: ctx.orgId,
+      certificate_id: cert.id,
+      event,
+      actor: ctx.createdBy,
+      detail: detail as Json,
+    });
+    if (eventError) console.error("api audit event failed", { cert: cert.id, event, message: eventError.message });
+  };
+  await logEvent("created", { via: "api", reference, ...(jobNumber ? { jobNumber } : {}) });
+
   if (!body.issue) {
     return Response.json(
       { ...base, status: "draft", issuable: validation.issuable, validation },
@@ -315,6 +328,7 @@ export async function POST(request: Request) {
     .from("certificates")
     .update({ status: "issued" as const, issued_at: issuedAt, pdf_path: pdfPath })
     .eq("id", cert.id);
+  await logEvent("issued", { via: "api", reference });
 
   const { data: signed } = await supabase.storage
     .from("fieldcert")
