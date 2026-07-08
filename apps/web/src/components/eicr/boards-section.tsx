@@ -1,6 +1,9 @@
 "use client";
 
-import { CheckCircle2, Copy, Plus, Trash2, Undo2 } from "lucide-react";
+import { CheckCircle2, Copy, Plus, Printer, Trash2, Undo2 } from "lucide-react";
+import { toast } from "sonner";
+import { printBoardSchedule } from "@/actions/certificates";
+import { openPdfBase64 } from "./open-pdf";
 import type { ConfirmOutcome, DistributionBoard, Eicr } from "@fieldcert/cert-schemas";
 import type { ValidationIssue } from "@fieldcert/rules-engine";
 import { Button } from "@/components/ui/button";
@@ -43,16 +46,23 @@ export function newBoard(designation: string): DistributionBoard {
 }
 
 export function BoardsSection({
+  certificateId,
   cert,
   update,
   issuesFor,
   readOnly,
 }: {
+  certificateId: string;
   cert: Eicr;
   update: Update;
   issuesFor: (field: string) => ValidationIssue[];
   readOnly: boolean;
 }) {
+  async function printSchedule(boardId: string) {
+    const result = await printBoardSchedule(certificateId, boardId);
+    if (result.base64) openPdfBase64(result.base64);
+    else toast.error(result.error ?? "Could not render the schedule");
+  }
   function addBoard() {
     update((d) => {
       d.boards.push(newBoard(nextDesignation(d.boards)));
@@ -150,6 +160,9 @@ export function BoardsSection({
                 <ScanBoardButton onScan={(scan) => applyScan(bi, scan)} disabled={readOnly} />
                 <Button type="button" variant="ghost" size="sm" onClick={() => copyBoard(bi)}>
                   <Copy className="size-4" /> Copy
+                </Button>
+                <Button type="button" variant="ghost" size="sm" onClick={() => printSchedule(board.id)}>
+                  <Printer className="size-4" /> Print schedule
                 </Button>
                 <Button
                   type="button"

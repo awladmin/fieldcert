@@ -35,7 +35,7 @@ const NAV = [
   { title: "Installations", href: "/installations", icon: Building2, adminOnly: false },
   { title: "Team", href: "/team", icon: Users, adminOnly: true },
   { title: "API", href: "/developers", icon: Code2, adminOnly: true },
-  { title: "Settings", href: "/settings", icon: Settings, adminOnly: true },
+  { title: "Settings", href: "/settings", icon: Settings, adminOnly: false },
 ];
 
 export function AppSidebar({

@@ -6,7 +6,11 @@ import { eicr, emptyEicr, type Eicr } from "@fieldcert/cert-schemas";
 import { validateEicr, type ValidationResult } from "@fieldcert/rules-engine";
 import { requireOrg, type OrgContext } from "@/lib/auth";
 import type { Json } from "@/lib/supabase/database.types";
-import { renderEicrPdfBuffer } from "@/lib/pdf/eicr-pdf";
+import { renderBoardSchedulePdfBuffer, renderEicrPdfBuffer } from "@/lib/pdf/eicr-pdf";
+import { loadAppendixPhotos, loadCertificateBranding } from "@/lib/pdf/branding";
+import { createHash } from "node:crypto";
+
+const SITE_URL = "https://fieldcert.co.uk";
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
@@ -246,7 +250,7 @@ export interface FlowResult {
 async function loadDraft(supabase: Awaited<ReturnType<typeof requireOrg>>["supabase"], id: string) {
   const { data: row, error } = await supabase
     .from("certificates")
-    .select("data, status, created_by, reference, job_number")
+    .select("data, status, created_by, reference, job_number, assigned_to")
     .eq("id", id)
     .single();
   if (error) return { error: error.message } as const;
@@ -274,21 +278,30 @@ async function renderAndStorePdf(
   cert: Eicr,
   issuedAtIso: string,
   reference: string,
-  jobNumber: string | null
-): Promise<{ pdfPath?: string; error?: string }> {
+  jobNumber: string | null,
+  inspectorUserId: string | null,
+  qsUserId: string | null
+): Promise<{ pdfPath?: string; sha256?: string; error?: string }> {
+  const [branding, appendixPhotoData] = await Promise.all([
+    loadCertificateBranding(org.orgId, inspectorUserId, qsUserId),
+    loadAppendixPhotos(cert.appendixPhotos.map((p) => p.storagePath)),
+  ]);
   const buffer = await renderEicrPdfBuffer({
     cert,
     orgName: org.orgName,
     reference,
     issuedAt: issuedAtIso.slice(0, 10),
     jobNumber,
+    branding,
+    appendixPhotoData,
+    verifyUrl: `${SITE_URL}/verify/${id}`,
   });
   const path = `${org.orgId}/certificates/${id}.pdf`;
   const { error } = await supabase.storage
     .from("fieldcert")
     .upload(path, buffer, { contentType: "application/pdf", upsert: true });
   if (error) return { error: `PDF upload failed: ${error.message}` };
-  return { pdfPath: path };
+  return { pdfPath: path, sha256: createHash("sha256").update(buffer).digest("hex") };
 }
 
 /** Engineers submit for approval when the org requires QS sign-off. */
@@ -361,7 +374,9 @@ export async function issueCertificate(id: string): Promise<FlowResult> {
   // the FC- fallback only covers rows that predate that flow.
   const reference = row.reference ?? certReference(id);
   const issuedAt = new Date().toISOString();
-  const pdf = await renderAndStorePdf(supabase, org, id, cert, issuedAt, reference, row.job_number);
+  const inspectorUserId = row.assigned_to ?? row.created_by;
+  const qsUserId = fromStatus === "pending_approval" ? user.id : inspectorUserId;
+  const pdf = await renderAndStorePdf(supabase, org, id, cert, issuedAt, reference, row.job_number, inspectorUserId, qsUserId);
   if (pdf.error) return { error: pdf.error };
 
   const { error } = await supabase
@@ -372,6 +387,7 @@ export async function issueCertificate(id: string): Promise<FlowResult> {
       approved_by: user.id,
       reference,
       pdf_path: pdf.pdfPath,
+      pdf_sha256: pdf.sha256,
       validation: toJson(gate.validation),
     })
     .eq("id", id)
@@ -528,7 +544,7 @@ export async function deleteCertificate(id: string): Promise<FlowResult> {
 
   const { data: cert, error: loadError } = await supabase
     .from("certificates")
-    .select("id, kind, status, reference, pdf_path")
+    .select("id, kind, status, reference, pdf_path, data")
     .eq("id", id)
     .single();
   if (loadError) return { error: loadError.message };
@@ -546,6 +562,10 @@ export async function deleteCertificate(id: string): Promise<FlowResult> {
     .eq("certificate_id", id);
   const paths = (evidence ?? []).map((e) => e.storage_path);
   if (cert.pdf_path) paths.push(cert.pdf_path);
+  const parsedForCleanup = eicr.safeParse(cert.data);
+  if (parsedForCleanup.success) {
+    paths.push(...parsedForCleanup.data.appendixPhotos.map((p) => p.storagePath));
+  }
   if (paths.length > 0) await supabase.storage.from("fieldcert").remove(paths);
 
   const { error } = await supabase.from("certificates").delete().eq("id", id);
@@ -665,4 +685,99 @@ export async function voidCertificate(
   revalidatePath(`/certificates/${id}`);
   revalidatePath("/certificates");
   return { ok: true, newCertificateId };
+}
+
+/**
+ * Renders the current draft as a PDF with a NOT VALID FOR ISSUE watermark,
+ * exactly what the client would receive minus the right to rely on it.
+ * Returned as base64; nothing is stored.
+ */
+export async function previewCertificatePdf(id: string): Promise<{ error?: string; base64?: string }> {
+  const { supabase, org } = await requireOrg();
+  const { data: row, error } = await supabase
+    .from("certificates")
+    .select("data, status, reference, job_number, assigned_to, created_by")
+    .eq("id", id)
+    .single();
+  if (error) return { error: error.message };
+
+  const parsed = eicr.safeParse(row.data);
+  if (!parsed.success) return { error: "Certificate data failed schema validation" };
+
+  const inspectorUserId = row.assigned_to ?? row.created_by;
+  const [branding, appendixPhotoData] = await Promise.all([
+    loadCertificateBranding(org.orgId, inspectorUserId, inspectorUserId),
+    loadAppendixPhotos(parsed.data.appendixPhotos.map((p) => p.storagePath)),
+  ]);
+  const buffer = await renderEicrPdfBuffer({
+    cert: parsed.data,
+    orgName: org.orgName,
+    reference: row.reference ?? "DRAFT",
+    issuedAt: todayIso(),
+    jobNumber: row.job_number,
+    branding,
+    appendixPhotoData,
+    watermark: row.status === "issued" ? undefined : "NOT VALID FOR ISSUE",
+  });
+  return { base64: buffer.toString("base64") };
+}
+
+/** A single board's circuit and test schedule as its own printable PDF. */
+export async function printBoardSchedule(
+  id: string,
+  boardId: string
+): Promise<{ error?: string; base64?: string }> {
+  const { supabase, org } = await requireOrg();
+  const { data: row, error } = await supabase
+    .from("certificates")
+    .select("data, reference")
+    .eq("id", id)
+    .single();
+  if (error) return { error: error.message };
+
+  const parsed = eicr.safeParse(row.data);
+  if (!parsed.success) return { error: "Certificate data failed schema validation" };
+  const board = parsed.data.boards.find((b) => b.id === boardId);
+  if (!board) return { error: "Board not found on this certificate" };
+
+  const branding = await loadCertificateBranding(org.orgId);
+  const buffer = await renderBoardSchedulePdfBuffer({
+    board,
+    orgName: org.orgName,
+    reference: row.reference ?? "DRAFT",
+    branding,
+  });
+  return { base64: buffer.toString("base64") };
+}
+
+const APPENDIX_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const APPENDIX_MAX_BYTES = 10 * 1024 * 1024;
+
+/** Uploads an appendix photo; the editor links it into the certificate data. */
+export async function addAppendixPhoto(
+  certificateId: string,
+  formData: FormData
+): Promise<{ error?: string; storagePath?: string }> {
+  const { supabase, org } = await requireOrg();
+
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return { error: "Choose a photo to upload" };
+  if (file.size > APPENDIX_MAX_BYTES) return { error: "Photos are limited to 10MB" };
+  if (!APPENDIX_TYPES.includes(file.type)) return { error: "Upload a JPEG, PNG or WebP photo" };
+
+  const extension = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+  const storagePath = `${org.orgId}/appendix/${certificateId}/${crypto.randomUUID()}.${extension}`;
+  const { error } = await supabase.storage
+    .from("fieldcert")
+    .upload(storagePath, file, { contentType: file.type });
+  if (error) return { error: error.message };
+  return { storagePath };
+}
+
+/** Best-effort removal of an appendix photo file after it leaves the data. */
+export async function removeAppendixPhoto(storagePath: string): Promise<{ error?: string; ok?: boolean }> {
+  const { supabase, org } = await requireOrg();
+  if (!storagePath.startsWith(`${org.orgId}/appendix/`)) return { error: "Not an appendix photo" };
+  await supabase.storage.from("fieldcert").remove([storagePath]);
+  return { ok: true };
 }

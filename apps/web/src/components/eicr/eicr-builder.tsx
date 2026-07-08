@@ -3,16 +3,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { AlertTriangle, CheckCircle2, Download, Link2, Plus, Trash2, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Download, Eye, Link2, Plus, Trash2, XCircle } from "lucide-react";
 import type { Eicr } from "@fieldcert/cert-schemas";
 import { validateEicr, type ValidationIssue } from "@fieldcert/rules-engine";
 import {
+  addAppendixPhoto,
   createShareLink,
   issueCertificate,
+  previewCertificatePdf,
+  removeAppendixPhoto,
   returnToDraft,
   saveCertificate,
   submitForApproval,
 } from "@/actions/certificates";
+import { openPdfBase64 } from "./open-pdf";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/status-badge";
@@ -98,6 +102,7 @@ export function EicrBuilder({
   initialData,
   jobNumber,
   voidReason,
+  equipment = [],
   role,
   qsApprovalRequired,
 }: {
@@ -106,6 +111,7 @@ export function EicrBuilder({
   initialData: Eicr;
   jobNumber?: string | null;
   voidReason?: string | null;
+  equipment?: Array<{ kind: string; name: string; serial: string }>;
   role: "admin" | "qs" | "engineer" | "office";
   qsApprovalRequired: boolean;
 }) {
@@ -267,6 +273,21 @@ export function EicrBuilder({
               </span>
             )}
             {!readOnly && <ValidatePanel validation={validation} onJump={jumpToSection} />}
+            {status !== "issued" && (
+              <Button
+                variant="outline"
+                onClick={() =>
+                  startAction(async () => {
+                    const result = await previewCertificatePdf(id);
+                    if (result.base64) openPdfBase64(result.base64);
+                    else toast.error(result.error ?? "Could not render the preview");
+                  })
+                }
+                disabled={busy}
+              >
+                <Eye className="size-4" /> Preview PDF
+              </Button>
+            )}
             {status === "draft" && engineerMustSubmit && (
               <Button size="lg" onClick={() => guardedAction(() => submitForApproval(id), "Submitted for approval")} disabled={busy}>
                 {busy ? "Submitting" : "Submit for approval"}
@@ -496,7 +517,7 @@ export function EicrBuilder({
           title="Boards and circuits"
           description="Each consumer unit or distribution board with its main switch, SPD and circuit test results. Zs is checked live against BS 7671 Table 41.3."
         >
-          <BoardsSection cert={cert} update={update} issuesFor={issuesFor} readOnly={readOnly} />
+          <BoardsSection certificateId={id} cert={cert} update={update} issuesFor={issuesFor} readOnly={readOnly} />
         </Section>
 
         <Section
@@ -631,19 +652,122 @@ export function EicrBuilder({
                   ["rcd", "RCD"],
                   ["earthElectrode", "Earth electrode"],
                 ] as const
-              ).map(([key, label]) => (
-                <TextField
-                  key={key}
-                  label={label}
-                  value={cert.testInstruments?.[key]}
-                  onChange={(v) =>
-                    update((d) => {
-                      d.testInstruments = { ...d.testInstruments, [key]: v };
-                    })
-                  }
-                />
-              ))}
+              ).map(([key, label]) => {
+                const registered = equipment.filter((e) => e.kind === key);
+                if (registered.length > 0) {
+                  return (
+                    <SelectField
+                      key={key}
+                      label={label}
+                      value={cert.testInstruments?.[key]}
+                      options={registered.map((e) => ({ value: e.serial, label: `${e.name} (${e.serial})` }))}
+                      onChange={(v) =>
+                        update((d) => {
+                          d.testInstruments = { ...d.testInstruments, [key]: v };
+                        })
+                      }
+                    />
+                  );
+                }
+                return (
+                  <TextField
+                    key={key}
+                    label={label}
+                    value={cert.testInstruments?.[key]}
+                    onChange={(v) =>
+                      update((d) => {
+                        d.testInstruments = { ...d.testInstruments, [key]: v };
+                      })
+                    }
+                  />
+                );
+              })}
             </div>
+          </div>
+        </Section>
+
+        <Section
+          part="Part 7"
+          id="part-7"
+          title="Appendix"
+          description="Additional notes and site photos, rendered at the end of the certificate."
+        >
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              <p className="text-sm font-medium">Additional information</p>
+              <textarea
+                rows={3}
+                className="border-input focus-visible:ring-ring w-full rounded-lg border bg-transparent px-3 py-2 text-base focus-visible:ring-2 focus-visible:outline-none"
+                placeholder="Anything the reader of the certificate should know, e.g. smoke alarm replacement dates..."
+                value={cert.appendixNotes ?? ""}
+                onChange={(e) => update((d) => { d.appendixNotes = e.target.value || undefined; })}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium">Appendix photos</p>
+              <label className="border-input hover:bg-muted flex h-11 cursor-pointer items-center gap-2 rounded-lg border px-5 text-[0.95rem] font-medium transition-colors">
+                <Plus className="size-4" /> Add photo
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const formData = new FormData();
+                    formData.set("file", file);
+                    startAction(async () => {
+                      const result = await addAppendixPhoto(id, formData);
+                      if (result.storagePath) {
+                        update((d) => {
+                          d.appendixPhotos.push({ id: crypto.randomUUID(), storagePath: result.storagePath! });
+                        });
+                        toast.success("Photo added to the appendix");
+                      } else {
+                        toast.error(result.error ?? "Upload failed");
+                      }
+                    });
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+            </div>
+            {cert.appendixPhotos.length === 0 ? (
+              <p className="text-muted-foreground py-2 text-center text-sm">
+                No photos yet. Board shots, defects and meter positions all belong here.
+              </p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {cert.appendixPhotos.map((photo, pi) => (
+                  <div key={photo.id} className="flex items-center gap-3 rounded-lg border p-3">
+                    <span className="text-muted-foreground font-mono text-xs">Photo {pi + 1}</span>
+                    <input
+                      className="border-input h-10 flex-1 rounded-lg border bg-transparent px-3 text-sm"
+                      placeholder="Caption, e.g. Consumer unit, hallway"
+                      value={photo.caption ?? ""}
+                      onChange={(e) =>
+                        update((d) => { d.appendixPhotos[pi]!.caption = e.target.value || undefined; })
+                      }
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Remove photo"
+                      onClick={() => {
+                        const path = photo.storagePath;
+                        update((d) => {
+                          d.appendixPhotos = d.appendixPhotos.filter((p) => p.id !== photo.id);
+                        });
+                        void removeAppendixPhoto(path);
+                      }}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </Section>
       </fieldset>

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
+import { suggestCompanyFromEmail } from "@/lib/companies-house";
 import { OnboardingWizard, type OnboardingStep } from "@/components/onboarding-wizard";
 
 export const metadata = { title: "Get started" };
@@ -31,9 +32,14 @@ export default async function OnboardingPage() {
   // signup it holds the individual-or-business choice. Prefilled, so it is quick.
   const step: OnboardingStep = orgRow ? "billing" : "profile";
 
+  // The Companies House trick: suggest the registered company from the email
+  // domain. Needs COMPANIES_HOUSE_API_KEY; silently absent otherwise.
+  const companySuggestion = orgRow ? null : await suggestCompanyFromEmail(user.email ?? "");
+
   return (
     <OnboardingWizard
       initialStep={step}
+      companySuggestion={companySuggestion}
       initialName={profile?.full_name ?? ""}
       orgAccountType={orgRow?.account_type === "individual" ? "individual" : "business"}
       isAdmin={!membership || membership.role === "admin"}

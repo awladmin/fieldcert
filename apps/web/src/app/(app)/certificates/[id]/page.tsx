@@ -10,7 +10,7 @@ export const metadata = { title: "Certificate" };
 export default async function CertificatePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { supabase, org } = await requireOrg();
-  const [{ data: cert }, { data: eventRows }] = await Promise.all([
+  const [{ data: cert }, { data: eventRows }, { data: equipmentRows }] = await Promise.all([
     supabase
       .from("certificates")
       .select("id, kind, status, data, reference, job_number, created_at")
@@ -21,6 +21,7 @@ export default async function CertificatePage({ params }: { params: Promise<{ id
       .select("id, event, actor, detail, created_at, profiles(full_name, email)")
       .eq("certificate_id", id)
       .order("created_at", { ascending: true }),
+    supabase.from("org_equipment").select("kind, name, serial").eq("org_id", org.orgId).order("kind"),
   ]);
   if (!cert) notFound();
 
@@ -58,6 +59,7 @@ export default async function CertificatePage({ params }: { params: Promise<{ id
         initialData={initialData}
         jobNumber={cert.job_number}
         voidReason={voidReason}
+        equipment={equipmentRows ?? []}
         role={org.role}
         qsApprovalRequired={org.qsApprovalRequired}
       />

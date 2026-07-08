@@ -156,6 +156,7 @@ export type Database = {
           kind: Database["public"]["Enums"]["certificate_kind"]
           org_id: string
           pdf_path: string | null
+          pdf_sha256: string | null
           property_id: string | null
           qs_member: string | null
           reference: string | null
@@ -176,6 +177,7 @@ export type Database = {
           kind: Database["public"]["Enums"]["certificate_kind"]
           org_id: string
           pdf_path?: string | null
+          pdf_sha256?: string | null
           property_id?: string | null
           qs_member?: string | null
           reference?: string | null
@@ -196,6 +198,7 @@ export type Database = {
           kind?: Database["public"]["Enums"]["certificate_kind"]
           org_id?: string
           pdf_path?: string | null
+          pdf_sha256?: string | null
           property_id?: string | null
           qs_member?: string | null
           reference?: string | null
@@ -414,6 +417,44 @@ export type Database = {
         }
         Relationships: []
       }
+      org_equipment: {
+        Row: {
+          calibration_due: string | null
+          created_at: string
+          id: string
+          kind: string
+          name: string
+          org_id: string
+          serial: string
+        }
+        Insert: {
+          calibration_due?: string | null
+          created_at?: string
+          id?: string
+          kind: string
+          name: string
+          org_id: string
+          serial: string
+        }
+        Update: {
+          calibration_due?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          name?: string
+          org_id?: string
+          serial?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_equipment_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       org_members: {
         Row: {
           created_at: string
@@ -506,6 +547,7 @@ export type Database = {
           id: string
           marketing_opt_in: boolean
           phone: string | null
+          signature_path: string | null
           terms_accepted_at: string | null
         }
         Insert: {
@@ -515,6 +557,7 @@ export type Database = {
           id: string
           marketing_opt_in?: boolean
           phone?: string | null
+          signature_path?: string | null
           terms_accepted_at?: string | null
         }
         Update: {
@@ -524,6 +567,7 @@ export type Database = {
           id?: string
           marketing_opt_in?: boolean
           phone?: string | null
+          signature_path?: string | null
           terms_accepted_at?: string | null
         }
         Relationships: []

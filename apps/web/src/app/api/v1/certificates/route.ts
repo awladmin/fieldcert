@@ -4,6 +4,8 @@ import { apiError, authenticateApiKey, type ApiContext } from "@/lib/api-auth";
 import { createServiceClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/database.types";
 import { renderEicrPdfBuffer } from "@/lib/pdf/eicr-pdf";
+import { loadAppendixPhotos, loadCertificateBranding } from "@/lib/pdf/branding";
+import { createHash } from "node:crypto";
 
 const REFERENCE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
 const UNIQUE_VIOLATION = "23505";
@@ -308,12 +310,19 @@ export async function POST(request: Request) {
   }
 
   const issuedAt = new Date().toISOString();
+  const [branding, appendixPhotoData] = await Promise.all([
+    loadCertificateBranding(ctx.orgId, ctx.createdBy, ctx.createdBy),
+    loadAppendixPhotos(parsed.data.appendixPhotos.map((p) => p.storagePath)),
+  ]);
   const buffer = await renderEicrPdfBuffer({
     cert: parsed.data,
     orgName: ctx.orgName,
     reference,
     issuedAt: issuedAt.slice(0, 10),
     jobNumber,
+    branding,
+    appendixPhotoData,
+    verifyUrl: `https://fieldcert.co.uk/verify/${cert.id}`,
   });
   const pdfPath = `${ctx.orgId}/certificates/${cert.id}.pdf`;
   const { error: uploadError } = await supabase.storage
@@ -326,7 +335,12 @@ export async function POST(request: Request) {
 
   await supabase
     .from("certificates")
-    .update({ status: "issued" as const, issued_at: issuedAt, pdf_path: pdfPath })
+    .update({
+      status: "issued" as const,
+      issued_at: issuedAt,
+      pdf_path: pdfPath,
+      pdf_sha256: createHash("sha256").update(buffer).digest("hex"),
+    })
     .eq("id", cert.id);
   await logEvent("issued", { via: "api", reference });
 

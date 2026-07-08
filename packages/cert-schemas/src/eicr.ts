@@ -219,6 +219,18 @@ export const eicr = z.object({
   dateOfLastInspection: isoDate.optional(),
   /** Section E: general condition of the installation in terms of electrical safety */
   generalCondition: z.string().optional(),
+  /** Free text rendered as an additional page at the end of the certificate */
+  appendixNotes: z.string().optional(),
+  /** Site photos rendered at the end of the certificate */
+  appendixPhotos: z
+    .array(
+      z.object({
+        id: z.string(),
+        caption: z.string().optional(),
+        storagePath: z.string(),
+      })
+    )
+    .default([]),
   /** Serial or asset numbers of the test instruments used */
   testInstruments: z
     .object({

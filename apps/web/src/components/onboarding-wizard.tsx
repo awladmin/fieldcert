@@ -33,6 +33,7 @@ export function OnboardingWizard({
   isAdmin,
   orgName,
   trialExpired = false,
+  companySuggestion = null,
 }: {
   initialStep: OnboardingStep;
   initialName: string;
@@ -40,6 +41,7 @@ export function OnboardingWizard({
   isAdmin: boolean;
   orgName: string;
   trialExpired?: boolean;
+  companySuggestion?: { name: string; address: string } | null;
 }) {
   const router = useRouter();
   const [step, setStep] = useState<OnboardingStep>(initialStep);
@@ -188,6 +190,18 @@ export function OnboardingWizard({
                 <p className="text-muted-foreground text-xs">
                   This appears on every certificate you issue. You can change it later in Settings.
                 </p>
+                {companySuggestion && companyName !== companySuggestion.name && (
+                  <button
+                    type="button"
+                    onClick={() => setCompanyName(companySuggestion.name)}
+                    className="border-primary/40 text-primary hover:bg-primary/5 mt-1 flex w-fit items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors"
+                  >
+                    <span className="bg-primary text-primary-foreground rounded px-1.5 py-0.5 text-[10px] font-bold">
+                      Companies House
+                    </span>
+                    {companySuggestion.name}
+                  </button>
+                )}
               </div>
               <Button onClick={submitOrg} disabled={pending || !companyName.trim()}>
                 {pending ? "Creating" : "Continue"}

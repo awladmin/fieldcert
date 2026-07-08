@@ -132,6 +132,7 @@ export function parseEasycert(buffer: Uint8Array): EasycertImport | EasycertFail
     boards: [],
     inspectionSchedule: {},
     customScheduleItems: [],
+    appendixPhotos: [],
   };
 
   const photoEntries = names.filter((n) => /\.(jpe?g|png|heic|webp)$/i.test(n));

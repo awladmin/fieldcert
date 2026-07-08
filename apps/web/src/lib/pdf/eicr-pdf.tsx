@@ -1,6 +1,8 @@
+/* eslint-disable jsx-a11y/alt-text -- react-pdf Image, not a DOM element */
 import {
   Document,
   Font,
+  Image,
   Page,
   Path,
   StyleSheet,
@@ -9,6 +11,7 @@ import {
   View,
   renderToBuffer,
 } from "@react-pdf/renderer";
+import type { CertificateBranding } from "./branding";
 import { FORM_FONT_BOLD, FORM_FONT_ITALIC, FORM_FONT_REGULAR } from "./fonts/fonts-data";
 import {
   INSPECTION_SCHEDULE,
@@ -45,6 +48,13 @@ export interface EicrPdfProps {
   reference: string;
   issuedAt: string;
   jobNumber?: string | null;
+  branding?: CertificateBranding;
+  /** Diagonal text on every page, e.g. NOT VALID FOR ISSUE on draft previews */
+  watermark?: string;
+  /** storagePath -> data URL for appendix photos */
+  appendixPhotoData?: Record<string, string>;
+  /** Public verification URL printed in the footer of issued certificates */
+  verifyUrl?: string;
 }
 
 export async function renderEicrPdfBuffer(props: EicrPdfProps): Promise<Buffer> {
@@ -116,11 +126,34 @@ function fmt(value: string | number | boolean | null | undefined): string {
   return String(value);
 }
 
-function SectionBar({ letter, title }: { letter?: string; title: string }) {
+function SectionBar({ letter, title, accent }: { letter?: string; title: string; accent?: string }) {
   return (
-    <Text style={s.bar}>
+    <Text style={[s.bar, accent ? { backgroundColor: accent } : {}]}>
       {letter ? `${letter}. ` : ""}
       {title.toUpperCase()}
+    </Text>
+  );
+}
+
+function Watermark({ text }: { text?: string }) {
+  if (!text) return null;
+  return (
+    <Text
+      fixed
+      style={{
+        position: "absolute",
+        top: "42%",
+        left: 0,
+        right: 0,
+        textAlign: "center",
+        fontSize: 52,
+        fontWeight: "bold",
+        color: "#e02020",
+        opacity: 0.16,
+        transform: "rotate(-24deg)",
+      }}
+    >
+      {text}
     </Text>
   );
 }
@@ -215,13 +248,17 @@ function CodeChip({ code }: { code?: string }) {
   );
 }
 
-function Footer({ reference }: { reference: string }) {
+function Footer({ reference, verifyUrl }: { reference: string; verifyUrl?: string }) {
   return (
     <View style={s.footer} fixed>
-      <Text>
+      <Text style={{ flex: 1, paddingRight: 8 }}>
         This form is based on the model shown in Appendix 6 of BS 7671:2018 (as amended). Produced using FieldCert.
+        {verifyUrl ? `  Verify: ${verifyUrl}` : ""}
       </Text>
-      <Text render={({ pageNumber, totalPages }) => `Ref: ${reference} - Page: ${pageNumber} of ${totalPages}`} />
+      <Text
+        style={{ width: 130, textAlign: "right" }}
+        render={({ pageNumber, totalPages }) => `Ref: ${reference} - Page: ${pageNumber} of ${totalPages}`}
+      />
     </View>
   );
 }
@@ -361,7 +398,17 @@ const WIRING_CODES: Array<[string, string]> = [
 
 const MIN_OBSERVATION_ROWS = 6;
 
-export function EicrPdf({ cert, orgName, reference, issuedAt }: EicrPdfProps) {
+export function EicrPdf({
+  cert,
+  orgName,
+  reference,
+  issuedAt,
+  branding,
+  watermark,
+  appendixPhotoData,
+  verifyUrl,
+}: EicrPdfProps) {
+  const accent = branding?.accentColor ?? ACCENT;
   const outcomes = cert.inspectionSchedule ?? {};
   const satisfactory = cert.overallAssessment === "satisfactory";
   const premises = cert.descriptionOfPremises;
@@ -386,15 +433,25 @@ export function EicrPdf({ cert, orgName, reference, issuedAt }: EicrPdfProps) {
           <Field label="Date" value={issuedAt.slice(0, 10)} flex={0.35} />
           <Field label="Certificate Serial No/Ref:" value={reference} flex={0.5} />
         </View>
-        <Text style={{ color: ACCENT, fontSize: 15, fontWeight: "bold" }}>{orgName}</Text>
-        <Text style={{ fontSize: 13.5, fontWeight: "bold", marginBottom: 1 }}>
-          Electrical Installation Condition Report
-        </Text>
-        <Text style={[s.small, { marginBottom: 6 }]}>
-          (Requirements for Electrical Installations - BS 7671 IET Wiring Regulations)
-        </Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 6 }}>
+          {branding?.logoDataUrl ? (
+            <Image src={branding.logoDataUrl} style={{ maxHeight: 42, maxWidth: 120, objectFit: "contain" }} />
+          ) : null}
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: accent, fontSize: 15, fontWeight: "bold" }}>{orgName}</Text>
+            <Text style={{ fontSize: 13.5, fontWeight: "bold", marginBottom: 1 }}>
+              Electrical Installation Condition Report
+            </Text>
+            <Text style={s.small}>
+              (Requirements for Electrical Installations - BS 7671 IET Wiring Regulations)
+            </Text>
+          </View>
+          {branding?.schemeLogoDataUrl ? (
+            <Image src={branding.schemeLogoDataUrl} style={{ maxHeight: 38, maxWidth: 90, objectFit: "contain" }} />
+          ) : null}
+        </View>
 
-        <SectionBar letter="A" title="Details of the client or person ordering the work" />
+        <SectionBar accent={accent} letter="A" title="Details of the client or person ordering the work" />
         <View style={s.panel}>
           <View style={s.row}>
             <Field label="Name:" value={cert.client?.name ?? cert.client?.companyName} />
@@ -409,7 +466,7 @@ export function EicrPdf({ cert, orgName, reference, issuedAt }: EicrPdfProps) {
           </View>
         </View>
 
-        <SectionBar letter="B" title="Reason for producing this report" />
+        <SectionBar accent={accent} letter="B" title="Reason for producing this report" />
         <View style={s.panel}>
           <View style={s.row}>
             <Text style={[s.boxValue, { flex: 1, minHeight: 20 }]}>{fmt(cert.purposeOfReport)}</Text>
@@ -419,7 +476,7 @@ export function EicrPdf({ cert, orgName, reference, issuedAt }: EicrPdfProps) {
           </View>
         </View>
 
-        <SectionBar letter="C" title="Details of the installation which is the subject of this report" />
+        <SectionBar accent={accent} letter="C" title="Details of the installation which is the subject of this report" />
         <View style={s.panel}>
           <View style={s.row}>
             <Field label="Occupier:" value={cert.occupier} />
@@ -459,7 +516,7 @@ export function EicrPdf({ cert, orgName, reference, issuedAt }: EicrPdfProps) {
           </View>
         </View>
 
-        <SectionBar letter="D" title="Extent and limitations of inspection and testing" />
+        <SectionBar accent={accent} letter="D" title="Extent and limitations of inspection and testing" />
         <View style={s.panel}>
           <View style={s.row}>
             <Field label="Extent of the electrical installation covered by this report" value={cert.extentOfInstallationCovered} />
@@ -477,7 +534,7 @@ export function EicrPdf({ cert, orgName, reference, issuedAt }: EicrPdfProps) {
           </Text>
         </View>
 
-        <SectionBar letter="E" title="Summary of the condition of the installation" />
+        <SectionBar accent={accent} letter="E" title="Summary of the condition of the installation" />
         <View style={s.panel}>
           <Text style={[s.label, { marginBottom: 1 }]}>
             General condition of the installation (in terms of electrical safety):
@@ -505,7 +562,7 @@ export function EicrPdf({ cert, orgName, reference, issuedAt }: EicrPdfProps) {
           </Text>
         </View>
 
-        <SectionBar letter="F" title="Recommendations" />
+        <SectionBar accent={accent} letter="F" title="Recommendations" />
         <View style={s.panel}>
           <Text style={[s.small, { marginBottom: 3 }]}>{RECOMMENDATIONS_TEXT}</Text>
           <View style={s.row}>
@@ -517,12 +574,13 @@ export function EicrPdf({ cert, orgName, reference, issuedAt }: EicrPdfProps) {
           </View>
         </View>
 
-        <Footer reference={reference} />
+        <Footer reference={reference} verifyUrl={verifyUrl} />
+        <Watermark text={watermark} />
       </Page>
 
       {/* ---------------- Page 2: G observations, H schedules note ---------------- */}
       <Page size="A4" style={s.page}>
-        <SectionBar letter="G" title="Observations and recommendations for actions to be taken" />
+        <SectionBar accent={accent} letter="G" title="Observations and recommendations for actions to be taken" />
         <View style={s.panel}>
           <Text style={[s.small, { marginBottom: 2 }]}>
             Referring to the attached schedules of inspection and test results, and subject to the limitations
@@ -597,12 +655,19 @@ export function EicrPdf({ cert, orgName, reference, issuedAt }: EicrPdfProps) {
           </View>
         </View>
 
-        <SectionBar letter="H" title="Declaration" />
+        <SectionBar accent={accent} letter="H" title="Declaration" />
         <View style={s.panel}>
           <Text style={[s.small, s.bold, { marginBottom: 3 }]}>{DECLARATION}</Text>
           <View style={s.row}>
             <Field label="Trading Title:" value={orgName} />
-            <Field label="Registration Number (if applicable):" value={cert.inspector?.registrationNumber} />
+            <Field
+              label="Registration Number (if applicable):"
+              value={branding?.enrolmentNumber ?? cert.inspector?.registrationNumber}
+            />
+          </View>
+          <View style={s.row}>
+            <Field label="Address:" value={branding?.orgAddress} flex={1.6} />
+            <Field label="Telephone:" value={branding?.orgPhone} flex={0.8} />
           </View>
           <Text style={[s.bold, { marginBottom: 2, marginTop: 2 }]}>For the INSPECTION, TESTING AND ASSESSMENT of the report:</Text>
           <View style={s.row}>
@@ -610,9 +675,15 @@ export function EicrPdf({ cert, orgName, reference, issuedAt }: EicrPdfProps) {
             <Field label="Position:" value={cert.inspector?.position} flex={0.8} />
             <View style={{ flexDirection: "row", alignItems: "center", flex: 1, gap: 3 }}>
               <Text style={s.label}>Signature:</Text>
-              <Text style={[s.boxValue, { flex: 1, fontStyle: "italic", fontWeight: "normal" }]}>
-                {cert.inspector?.name ?? ""}
-              </Text>
+              {branding?.inspectorSignatureDataUrl ? (
+                <View style={[s.boxValue, { flex: 1, alignItems: "center", paddingVertical: 0 }]}>
+                  <Image src={branding.inspectorSignatureDataUrl} style={{ height: 14, objectFit: "contain" }} />
+                </View>
+              ) : (
+                <Text style={[s.boxValue, { flex: 1, fontStyle: "italic", fontWeight: "normal" }]}>
+                  {cert.inspector?.name ?? ""}
+                </Text>
+              )}
             </View>
             <Field label="Date:" value={cert.inspectorSignedAt} flex={0.6} />
           </View>
@@ -622,15 +693,24 @@ export function EicrPdf({ cert, orgName, reference, issuedAt }: EicrPdfProps) {
             <Field label="Position:" value={cert.qsReviewer?.position ?? cert.inspector?.position} flex={0.8} />
             <View style={{ flexDirection: "row", alignItems: "center", flex: 1, gap: 3 }}>
               <Text style={s.label}>Signature:</Text>
-              <Text style={[s.boxValue, { flex: 1, fontStyle: "italic", fontWeight: "normal" }]}>
-                {cert.qsReviewer?.name ?? cert.inspector?.name ?? ""}
-              </Text>
+              {(branding?.qsSignatureDataUrl ?? branding?.inspectorSignatureDataUrl) ? (
+                <View style={[s.boxValue, { flex: 1, alignItems: "center", paddingVertical: 0 }]}>
+                  <Image
+                    src={(branding?.qsSignatureDataUrl ?? branding?.inspectorSignatureDataUrl)!}
+                    style={{ height: 14, objectFit: "contain" }}
+                  />
+                </View>
+              ) : (
+                <Text style={[s.boxValue, { flex: 1, fontStyle: "italic", fontWeight: "normal" }]}>
+                  {cert.qsReviewer?.name ?? cert.inspector?.name ?? ""}
+                </Text>
+              )}
             </View>
             <Field label="Date:" value={cert.qsSignedAt ?? cert.inspectorSignedAt ?? issuedAt.slice(0, 10)} flex={0.6} />
           </View>
         </View>
 
-        <SectionBar title="Schedules" />
+        <SectionBar accent={accent} title="Schedules" />
         <View style={s.panel}>
           <Text style={s.small}>
             {Math.max(1, cert.boards.length)} schedule(s) of circuit details and test results and 1 inspection
@@ -639,12 +719,13 @@ export function EicrPdf({ cert, orgName, reference, issuedAt }: EicrPdfProps) {
           </Text>
         </View>
 
-        <Footer reference={reference} />
+        <Footer reference={reference} verifyUrl={verifyUrl} />
+        <Watermark text={watermark} />
       </Page>
 
       {/* ---------------- Page 3: I supply, J particulars ---------------- */}
       <Page size="A4" style={s.page}>
-        <SectionBar letter="I" title="Supply characteristics and earthing arrangements" />
+        <SectionBar accent={accent} letter="I" title="Supply characteristics and earthing arrangements" />
         <View style={[s.panel, { flexDirection: "row", gap: 6 }]}>
           <View style={{ width: 96 }}>
             <Text style={[s.bold, { marginBottom: 2 }]}>Earthing Arrangements</Text>
@@ -698,7 +779,7 @@ export function EicrPdf({ cert, orgName, reference, issuedAt }: EicrPdfProps) {
           </View>
         </View>
 
-        <SectionBar letter="J" title="Particulars of installation referred to in this report" />
+        <SectionBar accent={accent} letter="J" title="Particulars of installation referred to in this report" />
         <View style={s.panel}>
           <View style={[s.row, { alignItems: "flex-start" }]}>
             <View style={{ width: 150 }}>
@@ -748,13 +829,14 @@ export function EicrPdf({ cert, orgName, reference, issuedAt }: EicrPdfProps) {
           </View>
         </View>
 
-        <Footer reference={reference} />
+        <Footer reference={reference} verifyUrl={verifyUrl} />
+        <Watermark text={watermark} />
       </Page>
 
       {/* ---------------- Inspection schedule ---------------- */}
       <Page size="A4" style={s.page}>
         <View fixed>
-          <SectionBar title="Inspection schedule for domestic & similar premises with up to 100A supply" />
+          <SectionBar accent={accent} title="Inspection schedule for domestic & similar premises with up to 100A supply" />
           <View style={{ flexDirection: "row", backgroundColor: "#dddddd", borderWidth: 0.7, borderColor: INK, borderTopWidth: 0 }}>
             <Text style={[s.bold, { width: 36, padding: 2, textAlign: "center" }]}>Item</Text>
             <Text style={[s.bold, { flex: 1, padding: 2, textAlign: "center" }]}>Description</Text>
@@ -856,13 +938,14 @@ export function EicrPdf({ cert, orgName, reference, issuedAt }: EicrPdfProps) {
           ))}
         </View>
 
-        <Footer reference={reference} />
+        <Footer reference={reference} verifyUrl={verifyUrl} />
+        <Watermark text={watermark} />
       </Page>
 
       {/* ---------------- Landscape combined schedules per board ---------------- */}
       {cert.boards.map((board) => (
         <Page key={board.id} size="A4" orientation="landscape" style={s.page}>
-          <SectionBar title="Distribution board details" />
+          <SectionBar accent={accent} title="Distribution board details" />
           <View style={[s.panel, { marginBottom: 4 }]}>
             <View style={s.row}>
               <Field label="DB reference:" value={board.designation} flex={1} />
@@ -888,7 +971,7 @@ export function EicrPdf({ cert, orgName, reference, issuedAt }: EicrPdfProps) {
             </View>
           </View>
 
-          <SectionBar title="Schedule of circuit details and test results" />
+          <SectionBar accent={accent} title="Schedule of circuit details and test results" />
           <CombinedSchedule board={board} />
 
           <View style={{ flexDirection: "row", borderWidth: 0.7, borderTopWidth: 0, borderColor: INK }}>
@@ -904,7 +987,7 @@ export function EicrPdf({ cert, orgName, reference, issuedAt }: EicrPdfProps) {
           </View>
 
           <View style={{ marginTop: 4 }}>
-            <SectionBar title="Details of test instruments" />
+            <SectionBar accent={accent} title="Details of test instruments" />
             <View style={[s.panel, { marginBottom: 4 }]}>
               <Text style={[s.small, { marginBottom: 2 }]}>Details of test instruments used (serial and/or asset numbers):</Text>
               <View style={s.row}>
@@ -924,16 +1007,95 @@ export function EicrPdf({ cert, orgName, reference, issuedAt }: EicrPdfProps) {
             <Field label="Tested by name:" value={cert.inspector?.name} flex={1.2} />
             <View style={{ flexDirection: "row", alignItems: "center", flex: 1, gap: 3 }}>
               <Text style={s.label}>Signature:</Text>
-              <Text style={[s.boxValue, { flex: 1, fontStyle: "italic", fontWeight: "normal" }]}>
-                {cert.inspector?.name ?? ""}
-              </Text>
+              {branding?.inspectorSignatureDataUrl ? (
+                <View style={[s.boxValue, { flex: 1, alignItems: "center", paddingVertical: 0 }]}>
+                  <Image src={branding.inspectorSignatureDataUrl} style={{ height: 14, objectFit: "contain" }} />
+                </View>
+              ) : (
+                <Text style={[s.boxValue, { flex: 1, fontStyle: "italic", fontWeight: "normal" }]}>
+                  {cert.inspector?.name ?? ""}
+                </Text>
+              )}
             </View>
             <Field label="Date:" value={cert.inspectionDate} flex={0.6} />
           </View>
 
-          <Footer reference={reference} />
+          <Footer reference={reference} verifyUrl={verifyUrl} />
+        <Watermark text={watermark} />
         </Page>
       ))}
+
+      {(cert.appendixNotes || cert.appendixPhotos.length > 0) && (
+        <Page size="A4" style={s.page}>
+          <SectionBar accent={accent} title="Appendix" />
+          {cert.appendixNotes ? (
+            <View style={s.panel}>
+              <Text style={[s.label, { marginBottom: 2 }]}>Additional information:</Text>
+              <Text style={[s.boxValue, { minHeight: 40, fontWeight: "normal" }]}>{cert.appendixNotes}</Text>
+            </View>
+          ) : null}
+          {cert.appendixPhotos.length > 0 && (
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 4 }}>
+              {cert.appendixPhotos.map((photo) => {
+                const data = appendixPhotoData?.[photo.storagePath];
+                if (!data) return null;
+                return (
+                  <View key={photo.id} style={{ width: 258, marginBottom: 6 }} wrap={false}>
+                    <Image src={data} style={{ width: 258, maxHeight: 190, objectFit: "contain", borderWidth: 0.6, borderColor: BOX_BORDER }} />
+                    <Text style={[s.small, { textAlign: "center", marginTop: 2, fontWeight: "bold" }]}>
+                      {photo.caption ?? ""}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          )}
+          <Footer reference={reference} verifyUrl={verifyUrl} />
+          <Watermark text={watermark} />
+        </Page>
+      )}
     </Document>
   );
+}
+
+/** A single board's schedule as its own document, for Print schedule. */
+export function BoardSchedulePdf({
+  board,
+  orgName,
+  reference,
+  branding,
+}: {
+  board: DistributionBoard;
+  orgName: string;
+  reference: string;
+  branding?: CertificateBranding;
+}) {
+  const accent = branding?.accentColor ?? ACCENT;
+  return (
+    <Document title={`Schedule ${board.designation ?? ""} ${reference}`} author={orgName} creator="FieldCert">
+      <Page size="A4" orientation="landscape" style={s.page}>
+        <SectionBar accent={accent} title="Distribution board details" />
+        <View style={[s.panel, { marginBottom: 4 }]}>
+          <View style={s.row}>
+            <Field label="DB reference:" value={board.designation} flex={1} />
+            <Field label="Location:" value={board.location} flex={1.2} />
+            <Field label="Supplied from:" value={board.suppliedFrom} flex={1.2} />
+            <Field label="Certificate:" value={reference} flex={1} />
+          </View>
+        </View>
+        <SectionBar accent={accent} title="Schedule of circuit details and test results" />
+        <CombinedSchedule board={board} />
+        <Footer reference={reference} />
+      </Page>
+    </Document>
+  );
+}
+
+export async function renderBoardSchedulePdfBuffer(props: {
+  board: DistributionBoard;
+  orgName: string;
+  reference: string;
+  branding?: CertificateBranding;
+}): Promise<Buffer> {
+  return renderToBuffer(<BoardSchedulePdf {...props} />);
 }
