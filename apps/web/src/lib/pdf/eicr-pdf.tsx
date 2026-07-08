@@ -6,6 +6,7 @@ export interface EicrPdfProps {
   orgName: string;
   reference: string;
   issuedAt: string;
+  jobNumber?: string | null;
 }
 
 export async function renderEicrPdfBuffer(props: EicrPdfProps): Promise<Buffer> {
@@ -111,10 +112,19 @@ function PdfHeader({ orgName, reference, issuedAt, subtitle }: { orgName: string
   );
 }
 
-function PdfFooter({ orgName }: { orgName: string }) {
+function PdfFooter({
+  orgName,
+  reference,
+  jobNumber,
+}: {
+  orgName: string;
+  reference: string;
+  jobNumber?: string | null;
+}) {
   return (
     <View style={styles.footer} fixed>
       <Text>{orgName}</Text>
+      <Text>{jobNumber ? `Job No: ${jobNumber}  ·  ${reference}` : reference}</Text>
       <Text>Generated with FieldCert</Text>
     </View>
   );
@@ -192,7 +202,7 @@ function BoardBlock({ board, index }: { board: DistributionBoard; index: number 
   );
 }
 
-export function EicrPdf({ cert, orgName, reference, issuedAt }: EicrPdfProps) {
+export function EicrPdf({ cert, orgName, reference, issuedAt, jobNumber }: EicrPdfProps) {
   const outcomes = cert.inspectionSchedule ?? {};
   return (
     <Document title={`EICR ${reference}`} author={orgName} creator="FieldCert">
@@ -259,7 +269,7 @@ export function EicrPdf({ cert, orgName, reference, issuedAt }: EicrPdfProps) {
           </Text>
         </View>
 
-        <PdfFooter orgName={orgName} />
+        <PdfFooter orgName={orgName} reference={reference} jobNumber={jobNumber} />
       </Page>
 
       {cert.boards.length > 0 && (
@@ -273,7 +283,7 @@ export function EicrPdf({ cert, orgName, reference, issuedAt }: EicrPdfProps) {
           {cert.boards.map((board, i) => (
             <BoardBlock key={board.id} board={board} index={i} />
           ))}
-          <PdfFooter orgName={orgName} />
+          <PdfFooter orgName={orgName} reference={reference} jobNumber={jobNumber} />
         </Page>
       )}
 
@@ -322,7 +332,7 @@ export function EicrPdf({ cert, orgName, reference, issuedAt }: EicrPdfProps) {
             ))}
           </View>
         )}
-        <PdfFooter orgName={orgName} />
+        <PdfFooter orgName={orgName} reference={reference} jobNumber={jobNumber} />
       </Page>
     </Document>
   );

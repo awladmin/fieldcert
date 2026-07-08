@@ -74,12 +74,14 @@ export function EicrBuilder({
   id,
   status,
   initialData,
+  jobNumber,
   role,
   qsApprovalRequired,
 }: {
   id: string;
   status: string;
   initialData: Eicr;
+  jobNumber?: string | null;
   role: "admin" | "qs" | "engineer" | "office";
   qsApprovalRequired: boolean;
 }) {
@@ -194,6 +196,9 @@ export function EicrBuilder({
           <div className="flex items-center gap-3">
             <h1 className="text-xl font-bold">{cert.reference ?? "EICR"}</h1>
             {cert.reference && <span className="text-muted-foreground text-sm">EICR</span>}
+            {jobNumber && (
+              <span className="text-muted-foreground text-sm">Job No: {jobNumber}</span>
+            )}
             <StatusBadge status={status} />
             {!readOnly && (
               <span

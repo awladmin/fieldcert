@@ -300,6 +300,7 @@ export async function POST(request: Request) {
     orgName: ctx.orgName,
     reference,
     issuedAt: issuedAt.slice(0, 10),
+    jobNumber,
   });
   const pdfPath = `${ctx.orgId}/certificates/${cert.id}.pdf`;
   const { error: uploadError } = await supabase.storage

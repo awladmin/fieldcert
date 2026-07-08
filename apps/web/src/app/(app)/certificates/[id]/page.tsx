@@ -11,7 +11,7 @@ export default async function CertificatePage({ params }: { params: Promise<{ id
   const { supabase, org } = await requireOrg();
   const { data: cert } = await supabase
     .from("certificates")
-    .select("id, kind, status, data, reference, created_at")
+    .select("id, kind, status, data, reference, job_number, created_at")
     .eq("id", id)
     .maybeSingle();
   if (!cert) notFound();
@@ -34,6 +34,7 @@ export default async function CertificatePage({ params }: { params: Promise<{ id
       id={cert.id}
       status={cert.status}
       initialData={initialData}
+      jobNumber={cert.job_number}
       role={org.role}
       qsApprovalRequired={org.qsApprovalRequired}
     />

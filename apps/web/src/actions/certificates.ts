@@ -216,7 +216,7 @@ export interface FlowResult {
 async function loadDraft(supabase: Awaited<ReturnType<typeof requireOrg>>["supabase"], id: string) {
   const { data: row, error } = await supabase
     .from("certificates")
-    .select("data, status, created_by, reference")
+    .select("data, status, created_by, reference, job_number")
     .eq("id", id)
     .single();
   if (error) return { error: error.message } as const;
@@ -243,13 +243,15 @@ async function renderAndStorePdf(
   id: string,
   cert: Eicr,
   issuedAtIso: string,
-  reference: string
+  reference: string,
+  jobNumber: string | null
 ): Promise<{ pdfPath?: string; error?: string }> {
   const buffer = await renderEicrPdfBuffer({
     cert,
     orgName: org.orgName,
     reference,
     issuedAt: issuedAtIso.slice(0, 10),
+    jobNumber,
   });
   const path = `${org.orgId}/certificates/${id}.pdf`;
   const { error } = await supabase.storage
@@ -327,7 +329,7 @@ export async function issueCertificate(id: string): Promise<FlowResult> {
   // the FC- fallback only covers rows that predate that flow.
   const reference = row.reference ?? certReference(id);
   const issuedAt = new Date().toISOString();
-  const pdf = await renderAndStorePdf(supabase, org, id, cert, issuedAt, reference);
+  const pdf = await renderAndStorePdf(supabase, org, id, cert, issuedAt, reference, row.job_number);
   if (pdf.error) return { error: pdf.error };
 
   const { error } = await supabase
