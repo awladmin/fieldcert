@@ -1,22 +1,32 @@
 import { cn } from "@/lib/utils";
 
 /**
- * FieldCert logo: a validation tick whose downstroke is a lightning bolt,
- * on a green tile. One SVG, fixed brand colours so it reads on any surface.
+ * FieldCert logo: a bordered validation seal with a tick. One SVG, brand
+ * green (#157a49) with a white tick, so it reads on any light surface.
  */
 export function LogoMark({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 64 64" className={cn("size-8", className)} role="img" aria-label="FieldCert">
-      <rect width="64" height="64" rx="14" fill="#157a49" />
-      <path
-        d="M24 47 L50 19"
-        fill="none"
-        stroke="#ffffff"
-        strokeWidth="9.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path d="M35 8 L19 34 L28 34 L24 49 L41 25 L31 25 Z" fill="#f5a524" />
+      <g transform="translate(32,32) scale(0.95) translate(-32,-32)">
+        <path
+          d="M 32.0 2.0 A 6.91 6.91 0 0 1 43.48 4.28 A 6.91 6.91 0 0 1 53.21 10.79 A 6.91 6.91 0 0 1 59.72 20.52 A 6.91 6.91 0 0 1 62.0 32.0 A 6.91 6.91 0 0 1 59.72 43.48 A 6.91 6.91 0 0 1 53.21 53.21 A 6.91 6.91 0 0 1 43.48 59.72 A 6.91 6.91 0 0 1 32.0 62.0 A 6.91 6.91 0 0 1 20.52 59.72 A 6.91 6.91 0 0 1 10.79 53.21 A 6.91 6.91 0 0 1 4.28 43.48 A 6.91 6.91 0 0 1 2.0 32.0 A 6.91 6.91 0 0 1 4.28 20.52 A 6.91 6.91 0 0 1 10.79 10.79 A 6.91 6.91 0 0 1 20.52 4.28 A 6.91 6.91 0 0 1 32.0 2.0 Z"
+          fill="none"
+          stroke="#157a49"
+          strokeWidth="2.4"
+        />
+        <path
+          d="M 32.0 6.5 A 5.87 5.87 0 0 1 41.76 8.44 A 5.87 5.87 0 0 1 50.03 13.97 A 5.87 5.87 0 0 1 55.56 22.24 A 5.87 5.87 0 0 1 57.5 32.0 A 5.87 5.87 0 0 1 55.56 41.76 A 5.87 5.87 0 0 1 50.03 50.03 A 5.87 5.87 0 0 1 41.76 55.56 A 5.87 5.87 0 0 1 32.0 57.5 A 5.87 5.87 0 0 1 22.24 55.56 A 5.87 5.87 0 0 1 13.97 50.03 A 5.87 5.87 0 0 1 8.44 41.76 A 5.87 5.87 0 0 1 6.5 32.0 A 5.87 5.87 0 0 1 8.44 22.24 A 5.87 5.87 0 0 1 13.97 13.97 A 5.87 5.87 0 0 1 22.24 8.44 A 5.87 5.87 0 0 1 32.0 6.5 Z"
+          fill="#157a49"
+        />
+        <path
+          d="M 21.5 33.5 L 28.5 40.5 L 42.5 24.5"
+          fill="none"
+          stroke="#fff"
+          strokeWidth="5.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </g>
     </svg>
   );
 }
@@ -26,7 +36,7 @@ export function Logo({ className, dark }: { className?: string; dark?: boolean }
     <span className={cn("flex items-center gap-3", className)}>
       <LogoMark className="size-10" />
       <span className={cn("text-2xl font-bold tracking-tight", dark ? "text-white" : "text-foreground")}>
-        Field<span className="text-[#157A55] dark:text-[#4CC38A]">Cert</span>
+        Field<span className="text-[#157a49] dark:text-[#4CC38A]">Cert</span>
       </span>
     </span>
   );
