@@ -23,9 +23,9 @@ export function LogoMark({ className }: { className?: string }) {
 
 export function Logo({ className, dark }: { className?: string; dark?: boolean }) {
   return (
-    <span className={cn("flex items-center gap-2.5", className)}>
-      <LogoMark className="size-8" />
-      <span className={cn("text-xl font-bold tracking-tight", dark ? "text-white" : "text-foreground")}>
+    <span className={cn("flex items-center gap-3", className)}>
+      <LogoMark className="size-10" />
+      <span className={cn("text-2xl font-bold tracking-tight", dark ? "text-white" : "text-foreground")}>
         Field<span className="text-[#157A55] dark:text-[#4CC38A]">Cert</span>
       </span>
     </span>

@@ -52,10 +52,10 @@ export function AppSidebar({
   return (
     <Sidebar>
       <SidebarHeader>
-        <div className="flex items-center gap-2.5 px-2 py-2">
-          <LogoMark className="size-9" />
+        <div className="flex items-center gap-3 px-2 py-2">
+          <LogoMark className="size-11" />
           <div className="flex min-w-0 flex-col">
-            <span className="text-base font-bold tracking-tight">FieldCert</span>
+            <span className="text-lg font-bold tracking-tight">FieldCert</span>
             <span className="text-sidebar-foreground/70 truncate text-xs">{orgName}</span>
           </div>
         </div>
