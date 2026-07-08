@@ -121,7 +121,7 @@ export default async function HomePage() {
                   </p>
                 </>
               ) : (
-                <div id="notify" className="mt-8 scroll-mt-24">
+                <div className="mt-8">
                   <NewsletterForm />
                   <p className="text-muted-foreground mt-4 text-sm font-medium">
                     FieldCert launches September 2026. Join the list and be first in, with a 30-day
@@ -562,6 +562,21 @@ export default async function HomePage() {
             </Card>
           </div>
         </section>
+
+        {/* Pre-launch: the launch list, the one place every early-access action lands */}
+        {!launched && (
+          <section id="notify" className="scroll-mt-16 border-t">
+            <div className="mx-auto flex w-full max-w-3xl flex-col items-center px-6 py-20 text-center">
+              <Badge className="bg-amber-500 font-semibold text-white">Launching September 2026</Badge>
+              <h2 className="mt-5 text-3xl font-bold text-balance">Be first in when FieldCert launches</h2>
+              <p className="text-muted-foreground mt-3 max-w-xl">
+                Leave your email and we will send you one message on launch day, with your 30-day
+                free trial ready to go. No spam, no chasing.
+              </p>
+              <NewsletterForm className="mt-8 items-center" />
+            </div>
+          </section>
+        )}
       </main>
 
       <footer className="border-t">
