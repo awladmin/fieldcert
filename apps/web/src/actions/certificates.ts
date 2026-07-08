@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { eicr, emptyEicr, type Eicr } from "@fieldcert/cert-schemas";
+import { eicr, emptyEicr, INSPECTION_SCHEDULE, type Eicr } from "@fieldcert/cert-schemas";
 import { validateEicr, type ValidationResult } from "@fieldcert/rules-engine";
 import { requireOrg, type OrgContext } from "@/lib/auth";
 import type { Json } from "@/lib/supabase/database.types";
@@ -23,6 +23,159 @@ function toJson(value: unknown): Json {
 
 function certReference(id: string) {
   return `FC-${id.slice(0, 8).toUpperCase()}`;
+}
+
+/**
+ * Dev-only: creates a fully populated, realistic EICR draft in one click so
+ * the branded output can be seen without typing a whole certificate. The
+ * button only renders in development; this guard blocks it in prod regardless.
+ */
+export async function generateSampleCertificate() {
+  if (process.env.NODE_ENV !== "development") throw new Error("Sample generation is development-only");
+  const { supabase, user, org } = await requireOrg();
+
+  const now = new Date();
+  const y = now.getFullYear();
+  const stamp = `${y}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
+  const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+  const suffix = Array.from({ length: 4 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join("");
+  const reference = `EICR-${stamp}-${suffix}`;
+
+  const streets = ["12 High Street", "8 Chestnut Avenue", "44 Mill Lane", "3 Dellands", "27 Woodside Road"];
+  const towns = ["Amersham", "Chesham", "High Wycombe", "Basingstoke", "Beaconsfield"];
+  const street = streets[Math.floor(Math.random() * streets.length)];
+  const town = towns[Math.floor(Math.random() * towns.length)];
+
+  // A couple of adverse schedule items, each backed by a linked observation.
+  const schedule: Record<string, "ok" | "C2" | "C3" | "NA"> = {};
+  for (const section of INSPECTION_SCHEDULE) {
+    for (const item of section.items) schedule[item.id] = section.number === 7 ? "NA" : "ok";
+  }
+  schedule["4.10"] = "C3";
+  schedule["5.2"] = "C2";
+
+  const board = (designation: string, location: string, circuits: Array<[string, string, "B" | "C", number, number]>) => {
+    const cs = circuits.map(([n, desc, curve, rating], i) => ({
+      id: `c${designation}-${i}`,
+      circuitNumber: n,
+      description: desc,
+      wiringType: "A",
+      referenceMethod: "C",
+      liveCsaMm2: rating >= 32 ? 2.5 : 1.5,
+      cpcCsaMm2: rating >= 32 ? 1.5 : 1,
+      ocpd: { standard: "BS EN 60898", curve, ratingA: rating },
+      rcd: { type: "AC" as const, iDeltaNMa: 30, ratingA: 40 },
+    }));
+    const results = circuits.map(([, , , , zs], i) => ({
+      circuitId: `c${designation}-${i}`,
+      r1PlusR2Ohms: Number((zs * 0.6).toFixed(2)),
+      insulationResistance: { testVoltageV: 250, liveEarthMohm: 200 },
+      zsOhms: zs,
+      polarityConfirmed: true,
+      rcdOperatingTimeMs: 24,
+      rcdTestButtonOk: true,
+    }));
+    return {
+      id: `db-${designation}`,
+      designation,
+      location,
+      manufacturer: "Hager",
+      suppliedFrom: designation === "DB1" ? "Origin" : "DB1",
+      numberOfPhases: 1,
+      supplyPolarityConfirmed: "pass" as const,
+      mainSwitch: { bsStandard: "BS EN 60947-3", voltageV: 230, ratingA: 100, rcdIDeltaNMa: 30 },
+      spd: { type: "Type 2", statusConfirmed: "pass" as const },
+      zDbOhms: 0.28,
+      prospectiveFaultCurrentKa: 1.4,
+      circuits: cs,
+      testResults: results,
+    };
+  };
+
+  const data = eicr.parse({
+    ...emptyEicr(),
+    reference,
+    client: { name: "Amersham Lettings Ltd", address: { line1: "Sovereign House, Basing View", town: "Basingstoke", postcode: "RG21 4FA" } },
+    occupier: "Tenant",
+    installationAddress: { line1: street, town, county: "Buckinghamshire", postcode: "HP7 0AA" },
+    descriptionOfPremises: "domestic" as const,
+    estimatedAgeYears: 30,
+    evidenceOfAlterations: true,
+    installationRecordsAvailable: false,
+    purposeOfReport: "To ensure the installation is suitable for continued use (periodic inspection)",
+    inspectionDate: now.toISOString().slice(0, 10),
+    nextInspectionDue: `${y + 5}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`,
+    extentOfInstallationCovered: "The whole of the fixed electrical installation",
+    limitations: "Minimum 10% sample of accessories removed for inspection of connections. Wiring inspected where visible.",
+    agreedWith: "Person ordering the report",
+    generalCondition: "The installation is in a generally satisfactory condition with a small number of items requiring attention.",
+    supply: {
+      earthing: "TN-C-S" as const,
+      liveConductors: "1-phase (2-wire)",
+      nominalVoltageU0: 230,
+      frequencyHz: 50,
+      zeOhms: 0.21,
+      prospectiveFaultCurrentKa: 1.35,
+      polarityConfirmed: true,
+      supplyProtectiveDevice: { standard: "BS 1361", type: "II", ratingA: 100 },
+    },
+    particulars: {
+      meansOfEarthing: "distributor" as const,
+      earthingConductor: { material: "Copper", csaMm2: 16 },
+      mainBondingConductor: { material: "Copper", csaMm2: 10 },
+      bondedServices: ["water", "gas"],
+      mainSwitch: { location: "Hallway", bsStandard: "BS EN 60947-3", ratingA: 100, poles: 2 },
+    },
+    inspectionSchedule: schedule,
+    observations: [
+      { id: crypto.randomUUID(), itemNumber: "4.10", code: "C3" as const, description: "No RCD six-monthly test notice present at the consumer unit." },
+      { id: crypto.randomUUID(), itemNumber: "5.2", code: "C2" as const, description: "Cables not correctly supported in the loft space; risk of premature collapse." },
+    ],
+    boards: [
+      board("DB1", "Hallway", [
+        ["1", "Kitchen ring", "B", 32, 0.61],
+        ["2", "Downstairs sockets", "B", 32, 0.72],
+        ["3", "Lighting ground floor", "B", 6, 1.29],
+        ["4", "Electric shower", "B", 40, 0.38],
+        ["5", "Cooker", "B", 32, 0.41],
+      ]),
+      board("DB2", "Garage", [
+        ["1", "Garage sockets", "B", 32, 0.88],
+        ["2", "Garage lighting", "B", 6, 1.44],
+      ]),
+    ],
+    inspector: { name: "Dan Jordan", position: "Qualified Supervisor", registrationNumber: "654321/00" },
+    inspectorSignedAt: now.toISOString().slice(0, 10),
+    testInstruments: {
+      multifunction: "MFT-101067675",
+      continuity: "MFT-101067675",
+      insulationResistance: "MFT-101067675",
+      earthFaultLoop: "MFT-101067675",
+      rcd: "MFT-101067675",
+    },
+    appendixNotes: "Smoke and heat alarms interlinked, mains with battery backup. Replacement dates: Hall 2035, Landing 2035, Kitchen 2029.",
+    overallAssessment: "unsatisfactory" as const,
+  });
+
+  const validation = validateEicr(data, { today: todayIso(), stage: "draft" });
+  const { data: cert, error } = await supabase
+    .from("certificates")
+    .insert({
+      org_id: org.orgId,
+      kind: "EICR" as const,
+      reference,
+      job_number: `JOB-${suffix}`,
+      assigned_to: user.id,
+      qs_member: user.id,
+      data: toJson(data),
+      validation: toJson(validation),
+      created_by: user.id,
+    })
+    .select("id")
+    .single();
+  if (error) throw new Error(error.message);
+  await recordEvent(supabase, org.orgId, cert.id, "created", user.id, { reference, sample: true });
+  redirect(`/certificates/${cert.id}`);
 }
 
 /**

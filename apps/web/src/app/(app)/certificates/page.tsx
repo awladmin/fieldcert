@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { AlertTriangle, CheckCircle2, ChevronRight, ScrollText, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronRight, ScrollText, Sparkles, XCircle } from "lucide-react";
 import { requireOrg } from "@/lib/auth";
+import { generateSampleCertificate } from "@/actions/certificates";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -219,6 +220,13 @@ export default async function CertificatesPage({
             qsApprovalRequired={org.qsApprovalRequired}
             defaultOpen={filters.new === "1"}
           />
+          {process.env.NODE_ENV === "development" && (
+            <form action={generateSampleCertificate}>
+              <Button type="submit" variant="outline">
+                <Sparkles className="size-4" /> Generate sample
+              </Button>
+            </form>
+          )}
         </div>
       </div>
 
