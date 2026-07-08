@@ -24,6 +24,8 @@ export const person = z.object({
   email: z.string().optional(),
   /** Scheme registration number, e.g. NICEIC/NAPIT enrolment */
   registrationNumber: z.string().optional(),
+  /** e.g. "Electrician", "Qualified Supervisor"; printed in the declaration */
+  position: z.string().optional(),
 });
 export type Person = z.infer<typeof person>;
 

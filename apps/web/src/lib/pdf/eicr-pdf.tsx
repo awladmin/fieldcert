@@ -12,6 +12,7 @@ import {
 import { FORM_FONT_BOLD, FORM_FONT_ITALIC, FORM_FONT_REGULAR } from "./fonts/fonts-data";
 import {
   INSPECTION_SCHEDULE,
+  LIVE_CONDUCTOR_TYPES,
   type DistributionBoard,
   type Eicr,
   type ScheduleOutcome,
@@ -606,7 +607,7 @@ export function EicrPdf({ cert, orgName, reference, issuedAt }: EicrPdfProps) {
           <Text style={[s.bold, { marginBottom: 2, marginTop: 2 }]}>For the INSPECTION, TESTING AND ASSESSMENT of the report:</Text>
           <View style={s.row}>
             <Field label="Name:" value={cert.inspector?.name} flex={1.1} />
-            <Field label="Position:" value="" flex={0.8} />
+            <Field label="Position:" value={cert.inspector?.position} flex={0.8} />
             <View style={{ flexDirection: "row", alignItems: "center", flex: 1, gap: 3 }}>
               <Text style={s.label}>Signature:</Text>
               <Text style={[s.boxValue, { flex: 1, fontStyle: "italic", fontWeight: "normal" }]}>
@@ -618,7 +619,7 @@ export function EicrPdf({ cert, orgName, reference, issuedAt }: EicrPdfProps) {
           <Text style={[s.bold, { marginBottom: 2 }]}>Report reviewed and authorised for issue by:</Text>
           <View style={s.row}>
             <Field label="Name:" value={cert.qsReviewer?.name ?? cert.inspector?.name} flex={1.1} />
-            <Field label="Position:" value="" flex={0.8} />
+            <Field label="Position:" value={cert.qsReviewer?.position ?? cert.inspector?.position} flex={0.8} />
             <View style={{ flexDirection: "row", alignItems: "center", flex: 1, gap: 3 }}>
               <Text style={s.label}>Signature:</Text>
               <Text style={[s.boxValue, { flex: 1, fontStyle: "italic", fontWeight: "normal" }]}>
@@ -656,21 +657,15 @@ export function EicrPdf({ cert, orgName, reference, issuedAt }: EicrPdfProps) {
           </View>
           <View style={{ flex: 1.3 }}>
             <Text style={[s.bold, { marginBottom: 2 }]}>Number and Type of Live Conductors</Text>
-            {["1-phase (2-wire)", "1-phase (3-wire)", "2-phase (3-wire)", "3-phase (3-wire)", "3-phase (4-wire)"].map((label) => (
+            {LIVE_CONDUCTOR_TYPES.map((label) => (
               <View key={label} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
                 <Text style={s.label}>{label}:</Text>
-                <MarkBox
-                  state={
-                    supply?.liveConductors && label.toLowerCase().startsWith(supply.liveConductors.slice(0, 7).toLowerCase())
-                      ? "tick"
-                      : "N/A"
-                  }
-                />
+                <MarkBox state={supply?.liveConductors === label ? "tick" : "N/A"} />
               </View>
             ))}
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 2 }}>
               <Text style={s.label}>Confirmation of supply polarity:</Text>
-              <MarkBox state="tick" />
+              <MarkBox state={supply?.polarityConfirmed === true ? "tick" : "N/A"} />
             </View>
           </View>
           <View style={{ flex: 1.6 }}>
@@ -908,7 +903,24 @@ export function EicrPdf({ cert, orgName, reference, issuedAt }: EicrPdfProps) {
             ))}
           </View>
 
-          <View style={[s.row, { marginTop: 6 }]}>
+          <View style={{ marginTop: 4 }}>
+            <SectionBar title="Details of test instruments" />
+            <View style={[s.panel, { marginBottom: 4 }]}>
+              <Text style={[s.small, { marginBottom: 2 }]}>Details of test instruments used (serial and/or asset numbers):</Text>
+              <View style={s.row}>
+                <Field label="Multi-functional:" value={cert.testInstruments?.multifunction} />
+                <Field label="Continuity:" value={cert.testInstruments?.continuity} />
+                <Field label="Insulation resistance:" value={cert.testInstruments?.insulationResistance} />
+              </View>
+              <View style={s.row}>
+                <Field label="Earth fault loop impedance:" value={cert.testInstruments?.earthFaultLoop} />
+                <Field label="RCD:" value={cert.testInstruments?.rcd} />
+                <Field label="Earth electrode resistance:" value={cert.testInstruments?.earthElectrode} />
+              </View>
+            </View>
+          </View>
+
+          <View style={[s.row, { marginTop: 2 }]}>
             <Field label="Tested by name:" value={cert.inspector?.name} flex={1.2} />
             <View style={{ flexDirection: "row", alignItems: "center", flex: 1, gap: 3 }}>
               <Text style={s.label}>Signature:</Text>

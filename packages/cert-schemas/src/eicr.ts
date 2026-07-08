@@ -16,10 +16,21 @@ import { scheduleOutcome } from "./inspection-schedule";
  * (IET model forms) EICR structure.
  */
 
+/** The model form's live conductor arrangements; the PDF ticks by exact match. */
+export const LIVE_CONDUCTOR_TYPES = [
+  "1-phase (2-wire)",
+  "1-phase (3-wire)",
+  "2-phase (3-wire)",
+  "3-phase (3-wire)",
+  "3-phase (4-wire)",
+] as const;
+
 export const supplyCharacteristics = z.object({
   earthing: earthingArrangement.optional(),
-  /** e.g. "1-phase 2-wire", "3-phase 4-wire" */
+  /** One of LIVE_CONDUCTOR_TYPES, e.g. "1-phase (2-wire)" */
   liveConductors: z.string().optional(),
+  /** Supply polarity confirmed at the origin; never assumed */
+  polarityConfirmed: z.boolean().optional(),
   nominalVoltageU0: z.number().optional(),
   nominalVoltageU: z.number().optional(),
   frequencyHz: z.number().optional(),
@@ -208,6 +219,17 @@ export const eicr = z.object({
   dateOfLastInspection: isoDate.optional(),
   /** Section E: general condition of the installation in terms of electrical safety */
   generalCondition: z.string().optional(),
+  /** Serial or asset numbers of the test instruments used */
+  testInstruments: z
+    .object({
+      multifunction: z.string().optional(),
+      continuity: z.string().optional(),
+      insulationResistance: z.string().optional(),
+      earthFaultLoop: z.string().optional(),
+      rcd: z.string().optional(),
+      earthElectrode: z.string().optional(),
+    })
+    .optional(),
 
   supply: supplyCharacteristics.optional(),
   particulars: installationParticulars.optional(),

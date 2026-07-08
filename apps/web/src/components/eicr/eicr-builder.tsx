@@ -23,7 +23,28 @@ import { BoardsSection } from "./boards-section";
 import { ScheduleSection } from "./schedule-section";
 import { ValidatePanel } from "./validate-panel";
 import { VoidCertificate } from "./void-certificate";
-import { NumberField, SelectField, TextField } from "./fields";
+import { ChipGroup, NumberField, SelectField, TextField } from "./fields";
+import { LIVE_CONDUCTOR_TYPES } from "@fieldcert/cert-schemas";
+
+const YES_NO = [
+  { value: "yes", label: "Yes" },
+  { value: "no", label: "No" },
+];
+
+const PREMISES = [
+  { value: "domestic", label: "Domestic" },
+  { value: "commercial", label: "Commercial" },
+  { value: "industrial", label: "Industrial" },
+  { value: "other", label: "Other" },
+];
+
+function boolToChip(value: boolean | undefined): string | undefined {
+  return value === true ? "yes" : value === false ? "no" : undefined;
+}
+
+function chipToBool(value: string | undefined): boolean | undefined {
+  return value === "yes" ? true : value === "no" ? false : undefined;
+}
 
 const OBSERVATION_CODES = [
   { value: "C1", label: "C1: Danger present" },
@@ -357,6 +378,68 @@ export function EicrBuilder({
               issues={issuesFor("extentOfInstallationCovered")}
               onChange={(v) => update((d) => { d.extentOfInstallationCovered = v; })}
             />
+            <TextField
+              label="Reason for producing this report"
+              placeholder="e.g. To ensure the installation is suitable for continued use"
+              className="sm:col-span-2"
+              value={cert.purposeOfReport}
+              onChange={(v) => update((d) => { d.purposeOfReport = v; })}
+            />
+            <ChipGroup
+              label="Description of premises"
+              value={cert.descriptionOfPremises}
+              options={PREMISES}
+              onChange={(v) =>
+                update((d) => {
+                  d.descriptionOfPremises = v as "domestic" | "commercial" | "industrial" | "other" | undefined;
+                })
+              }
+            />
+            <NumberField
+              label="Estimated age of wiring"
+              unit="years"
+              value={cert.estimatedAgeYears}
+              onChange={(v) => update((d) => { d.estimatedAgeYears = v; })}
+            />
+            <ChipGroup
+              label="Evidence of additions or alterations"
+              value={boolToChip(cert.evidenceOfAlterations)}
+              options={YES_NO}
+              onChange={(v) => update((d) => { d.evidenceOfAlterations = chipToBool(v); })}
+            />
+            <div className="grid grid-cols-2 gap-4">
+              <ChipGroup
+                label="Records available (651.1)"
+                value={boolToChip(cert.installationRecordsAvailable)}
+                options={YES_NO}
+                onChange={(v) => update((d) => { d.installationRecordsAvailable = chipToBool(v); })}
+              />
+              <TextField
+                label="Date of last inspection"
+                type="date"
+                value={cert.dateOfLastInspection}
+                onChange={(v) => update((d) => { d.dateOfLastInspection = v; })}
+              />
+            </div>
+            <TextField
+              label="Agreed limitations, with reasons (653.2)"
+              placeholder="e.g. 10% sample of accessories removed for inspection"
+              className="sm:col-span-2"
+              value={cert.limitations}
+              onChange={(v) => update((d) => { d.limitations = v; })}
+            />
+            <TextField
+              label="Limitations agreed with"
+              placeholder="e.g. Person ordering the report"
+              value={cert.agreedWith}
+              onChange={(v) => update((d) => { d.agreedWith = v; })}
+            />
+            <TextField
+              label="Operational limitations"
+              placeholder="e.g. Wiring inspected where visible"
+              value={cert.operationalLimitations}
+              onChange={(v) => update((d) => { d.operationalLimitations = v; })}
+            />
           </div>
         </Section>
 
@@ -384,6 +467,25 @@ export function EicrBuilder({
               unit="ohms"
               value={cert.supply?.zeOhms}
               onChange={(v) => update((d) => { d.supply = { ...d.supply, zeOhms: v }; })}
+            />
+            <SelectField
+              label="Live conductors"
+              value={cert.supply?.liveConductors}
+              options={LIVE_CONDUCTOR_TYPES.map((v) => ({ value: v, label: v }))}
+              onChange={(v) => update((d) => { d.supply = { ...d.supply, liveConductors: v }; })}
+            />
+            <NumberField
+              label="Prospective fault current Ipf"
+              unit="kA"
+              step="0.1"
+              value={cert.supply?.prospectiveFaultCurrentKa}
+              onChange={(v) => update((d) => { d.supply = { ...d.supply, prospectiveFaultCurrentKa: v }; })}
+            />
+            <ChipGroup
+              label="Supply polarity confirmed"
+              value={boolToChip(cert.supply?.polarityConfirmed)}
+              options={YES_NO}
+              onChange={(v) => update((d) => { d.supply = { ...d.supply, polarityConfirmed: chipToBool(v) }; })}
             />
           </div>
         </Section>
@@ -482,11 +584,30 @@ export function EicrBuilder({
             />
             <div />
             <TextField
+              label="General condition of the installation"
+              placeholder="e.g. Installation is in good condition and wired to current standards"
+              className="sm:col-span-2"
+              value={cert.generalCondition}
+              onChange={(v) => update((d) => { d.generalCondition = v; })}
+            />
+            <TextField
               label="Inspector name"
               placeholder="e.g. Dan Jordan"
               value={cert.inspector?.name}
               issues={issuesFor("inspector.name")}
               onChange={(v) => update((d) => { d.inspector = { ...d.inspector, name: v }; })}
+            />
+            <TextField
+              label="Inspector position"
+              placeholder="e.g. Electrician"
+              value={cert.inspector?.position}
+              onChange={(v) => update((d) => { d.inspector = { ...d.inspector, position: v }; })}
+            />
+            <TextField
+              label="Scheme registration number"
+              placeholder="e.g. 003293/000"
+              value={cert.inspector?.registrationNumber}
+              onChange={(v) => update((d) => { d.inspector = { ...d.inspector, registrationNumber: v }; })}
             />
             <TextField
               label="Signed date"
@@ -495,6 +616,34 @@ export function EicrBuilder({
               issues={issuesFor("inspectorSignedAt")}
               onChange={(v) => update((d) => { d.inspectorSignedAt = v; })}
             />
+          </div>
+          <div className="mt-5 rounded-lg border p-3">
+            <p className="text-primary mb-3 text-xs font-bold tracking-widest uppercase">
+              Test instruments used (serial or asset numbers)
+            </p>
+            <div className="grid gap-4 sm:grid-cols-3">
+              {(
+                [
+                  ["multifunction", "Multifunction"],
+                  ["continuity", "Continuity"],
+                  ["insulationResistance", "Insulation resistance"],
+                  ["earthFaultLoop", "Earth fault loop"],
+                  ["rcd", "RCD"],
+                  ["earthElectrode", "Earth electrode"],
+                ] as const
+              ).map(([key, label]) => (
+                <TextField
+                  key={key}
+                  label={label}
+                  value={cert.testInstruments?.[key]}
+                  onChange={(v) =>
+                    update((d) => {
+                      d.testInstruments = { ...d.testInstruments, [key]: v };
+                    })
+                  }
+                />
+              ))}
+            </div>
           </div>
         </Section>
       </fieldset>
