@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { OnboardingWizard, type OnboardingStep } from "@/components/onboarding-wizard";
 
-export const metadata = { title: "Get started | FieldCert" };
+export const metadata = { title: "Get started" };
 
 export default async function OnboardingPage() {
   const { supabase, user } = await requireUser();

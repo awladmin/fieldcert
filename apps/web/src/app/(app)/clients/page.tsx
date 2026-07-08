@@ -1,7 +1,7 @@
 import { requireOrg } from "@/lib/auth";
 import { ClientsManager, type ClientRow } from "@/components/clients-manager";
 
-export const metadata = { title: "Clients | FieldCert" };
+export const metadata = { title: "Clients" };
 
 interface StoredAddress {
   line1?: string;

@@ -1,7 +1,7 @@
 import { requireAdmin } from "@/lib/auth";
 import { TeamManager } from "@/components/team-manager";
 
-export const metadata = { title: "Team | FieldCert" };
+export const metadata = { title: "Team" };
 
 export default async function TeamPage() {
   const { supabase, user, org } = await requireAdmin();

@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 
-export const metadata = { title: "Certificates | FieldCert" };
+export const metadata = { title: "Certificates" };
 
 interface StoredAddress {
   line1?: string;

@@ -1,7 +1,7 @@
 import { requireAdmin } from "@/lib/auth";
 import { ApiKeysManager } from "@/components/api-keys-manager";
 
-export const metadata = { title: "API | FieldCert" };
+export const metadata = { title: "API" };
 
 export default async function DevelopersPage() {
   const { supabase, org } = await requireAdmin();

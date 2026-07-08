@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Logo } from "@/components/logo";
 import { ContactForm } from "@/components/contact-form";
 
-export const metadata = { title: "Contact us | FieldCert" };
+export const metadata = { title: "Contact us" };
 
 export default function ContactPage() {
   return (

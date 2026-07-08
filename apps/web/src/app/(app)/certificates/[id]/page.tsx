@@ -4,7 +4,7 @@ import { requireOrg } from "@/lib/auth";
 import { EicrBuilder } from "@/components/eicr/eicr-builder";
 import { UploadedCertificateView } from "@/components/uploaded-certificate-view";
 
-export const metadata = { title: "Certificate | FieldCert" };
+export const metadata = { title: "Certificate" };
 
 export default async function CertificatePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

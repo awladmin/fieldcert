@@ -1,4 +1,4 @@
-export const metadata = { title: "Terms of service | FieldCert" };
+export const metadata = { title: "Terms of service" };
 
 export default function TermsPage() {
   return (

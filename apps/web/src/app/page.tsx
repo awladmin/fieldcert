@@ -21,9 +21,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const metadata = {
-  title: "FieldCert | Electrical certificates that cannot go out wrong",
+  title: { absolute: "FieldCert | Electrical certificates that cannot go out wrong" },
   description:
     "EICR software with a built-in BS 7671 validation engine and an API for field service platforms. Errors are caught as you type, and a certificate with outstanding errors cannot be issued.",
+  alternates: { canonical: "https://fieldcert.co.uk" },
 };
 
 const API_EXAMPLE = `POST /api/v1/certificates
@@ -55,8 +56,35 @@ export default async function HomePage() {
   // NEXT_PUBLIC_LAUNCHED=true to go live.
   const launched = process.env.NEXT_PUBLIC_LAUNCHED === "true";
 
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "FieldCert",
+    applicationCategory: "BusinessApplication",
+    operatingSystem: "Web",
+    description:
+      "Electrical certificate software for UK electricians with a built-in BS 7671 validation engine, AI board scanner and public API.",
+    url: "https://fieldcert.co.uk",
+    offers: {
+      "@type": "Offer",
+      price: "14.99",
+      priceCurrency: "GBP",
+      description: "Individual plan, per month plus VAT, with a 30-day free trial",
+    },
+    publisher: {
+      "@type": "Organization",
+      name: "FieldCert",
+      url: "https://fieldcert.co.uk",
+      email: "hello@fieldcert.co.uk",
+    },
+  };
+
   return (
     <div className="flex min-h-screen flex-col">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
       <header className="bg-background/90 sticky top-0 z-20 border-b backdrop-blur">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6">
           <Link href="/" aria-label="FieldCert home">

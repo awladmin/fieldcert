@@ -1,7 +1,7 @@
 import { requireOrg } from "@/lib/auth";
 import { InstallationsManager, type InstallationRow } from "@/components/installations-manager";
 
-export const metadata = { title: "Installations | FieldCert" };
+export const metadata = { title: "Installations" };
 
 interface StoredAddress {
   line1?: string;

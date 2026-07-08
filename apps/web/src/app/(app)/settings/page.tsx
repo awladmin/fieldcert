@@ -1,7 +1,7 @@
 import { requireAdmin } from "@/lib/auth";
 import { OrgSettings } from "@/components/org-settings";
 
-export const metadata = { title: "Settings | FieldCert" };
+export const metadata = { title: "Settings" };
 
 export default async function SettingsPage() {
   const { org } = await requireAdmin();

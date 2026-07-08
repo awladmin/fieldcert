@@ -1,4 +1,4 @@
-export const metadata = { title: "Privacy policy | FieldCert" };
+export const metadata = { title: "Privacy policy" };
 
 export default function PrivacyPage() {
   return (

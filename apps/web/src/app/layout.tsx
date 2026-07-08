@@ -13,9 +13,38 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "FieldCert",
+  metadataBase: new URL("https://fieldcert.co.uk"),
+  title: {
+    default: "FieldCert | Electrical certificate software with BS 7671 validation",
+    template: "%s | FieldCert",
+  },
   description:
     "Electrical certificates with built-in BS 7671 validation. Errors are caught as you type, and a certificate with outstanding errors cannot be issued.",
+  applicationName: "FieldCert",
+  keywords: [
+    "EICR software",
+    "electrical certificate software",
+    "BS 7671",
+    "electrical installation condition report",
+    "certificate validation",
+    "UK electrician software",
+  ],
+  openGraph: {
+    type: "website",
+    siteName: "FieldCert",
+    locale: "en_GB",
+    url: "https://fieldcert.co.uk",
+    title: "FieldCert | Electrical certificates that cannot go out wrong",
+    description:
+      "EICR software with a built-in BS 7671 validation engine, an AI board scanner and an API for field service platforms.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "FieldCert | Electrical certificates that cannot go out wrong",
+    description:
+      "EICR software with a built-in BS 7671 validation engine, an AI board scanner and an API for field service platforms.",
+  },
+  alternates: { canonical: "https://fieldcert.co.uk" },
 };
 
 export default function RootLayout({
