@@ -10,6 +10,13 @@ import {
   renderToBuffer,
 } from "@react-pdf/renderer";
 import { FORM_FONT_BOLD, FORM_FONT_ITALIC, FORM_FONT_REGULAR } from "./fonts/fonts-data";
+import {
+  INSPECTION_SCHEDULE,
+  type DistributionBoard,
+  type Eicr,
+  type ScheduleOutcome,
+} from "@fieldcert/cert-schemas";
+import { maxZsOhms } from "@fieldcert/rules-engine";
 
 Font.register({
   family: "Form",
@@ -19,24 +26,16 @@ Font.register({
     { src: FORM_FONT_ITALIC, fontStyle: "italic" },
   ],
 });
-// The model form fills every field; word-splitting long values reads wrong on a certificate.
 Font.registerHyphenationCallback((word) => [word]);
-import {
-  INSPECTION_SCHEDULE,
-  type CircuitDetails,
-  type CircuitTestResults,
-  type DistributionBoard,
-  type Eicr,
-} from "@fieldcert/cert-schemas";
-import { maxZsOhms } from "@fieldcert/rules-engine";
 
 /**
- * Faithful reproduction of the BS 7671 (IET) EICR model form: the report
- * (Sections A-H), supply characteristics and observations (Sections I-K),
- * landscape schedules of circuit details and test results per board, and the
- * condition report inspection schedule. Layout, wording and section lettering
- * follow the published model form; the IET permits reproduction of the forms
- * for electrical contracting use (their logo is not used).
+ * The EICR as engineers actually hand it over, built to the design language
+ * shared by the real-world outputs we hold (Tysoft EasyCert and iCertifi
+ * samples) on top of the BS 7671 Appendix 6 model form content: coloured
+ * lettered section bars, grey panels with white value boxes, colour-filled
+ * outcome and classification chips, the green/red verdict block, and the
+ * combined landscape schedule of circuit details and test results.
+ * The accent colour becomes per-organisation in the branding phase.
  */
 
 export interface EicrPdfProps {
@@ -51,56 +50,62 @@ export async function renderEicrPdfBuffer(props: EicrPdfProps): Promise<Buffer> 
   return renderToBuffer(<EicrPdf {...props} />);
 }
 
+const ACCENT = "#157A55";
 const INK = "#111111";
-const RULE = "#444444";
+const PANEL = "#ececec";
+const BOX_BORDER = "#8f8f8f";
+const GREEN = "#27a544";
+const RED = "#e02020";
+const ORANGE = "#f28c28";
+const YELLOW = "#f2e520";
+const LAVENDER = "#cfc9ef";
+const LIGHT_BLUE = "#bfe0ef";
 
 const s = StyleSheet.create({
-  page: { paddingTop: 28, paddingBottom: 42, paddingHorizontal: 28, fontSize: 7.5, fontFamily: "Form", color: INK },
-  titleRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 6 },
-  docTitle: { fontSize: 12.5, fontWeight: "bold" },
-  reportNo: { fontSize: 9, fontWeight: "bold" },
-  section: { borderWidth: 1, borderColor: INK, marginBottom: 5 },
-  sectionTitle: {
-    fontSize: 8,
+  page: { paddingTop: 24, paddingBottom: 40, paddingHorizontal: 26, fontSize: 7.5, fontFamily: "Form", color: INK },
+  bar: {
+    backgroundColor: ACCENT,
+    color: "#ffffff",
     fontWeight: "bold",
-    paddingHorizontal: 5,
-    paddingTop: 4,
-    paddingBottom: 3,
+    fontSize: 8.5,
+    paddingVertical: 3,
+    paddingHorizontal: 6,
   },
-  sectionBody: { paddingHorizontal: 5, paddingBottom: 4 },
-  lineRow: { flexDirection: "row", alignItems: "flex-end", marginBottom: 3 },
-  lineLabel: { paddingRight: 4 },
-  lineValue: {
-    flex: 1,
+  panel: { backgroundColor: PANEL, padding: 5, marginBottom: 6 },
+  label: { fontSize: 7 },
+  boxValue: {
+    backgroundColor: "#ffffff",
+    borderWidth: 0.6,
+    borderColor: BOX_BORDER,
+    paddingHorizontal: 3,
+    paddingVertical: 2,
     fontWeight: "bold",
-    borderBottomWidth: 0.5,
-    borderBottomColor: RULE,
-    borderBottomStyle: "dotted",
-    paddingBottom: 1,
-    minHeight: 9,
+    minHeight: 11,
   },
-  small: { fontSize: 6.5, color: "#222222" },
-  para: { marginBottom: 3, lineHeight: 1.25 },
+  row: { flexDirection: "row", alignItems: "center", marginBottom: 3, gap: 4 },
+  small: { fontSize: 6.3, lineHeight: 1.25 },
   bold: { fontWeight: "bold" },
   footer: {
     position: "absolute",
-    bottom: 20,
-    left: 28,
-    right: 28,
+    bottom: 18,
+    left: 26,
+    right: 26,
     flexDirection: "row",
     justifyContent: "space-between",
     fontSize: 6.5,
     color: "#333333",
-    borderTopWidth: 0.5,
-    borderTopColor: RULE,
-    paddingTop: 4,
   },
-  // schedule tables
-  th: { fontWeight: "bold", fontSize: 6, textAlign: "center" },
-  td: { fontSize: 6.5, textAlign: "center" },
-  cell: { borderRightWidth: 0.5, borderRightColor: RULE, paddingVertical: 2, paddingHorizontal: 1, justifyContent: "flex-end" },
-  headRow: { flexDirection: "row", borderWidth: 1, borderColor: INK, borderBottomWidth: 1, backgroundColor: "#efefef" },
-  bodyRow: { flexDirection: "row", borderLeftWidth: 1, borderRightWidth: 1, borderBottomWidth: 0.5, borderColor: INK },
+  chip: {
+    paddingVertical: 2,
+    paddingHorizontal: 2,
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 34,
+  },
+  chipText: { fontWeight: "bold", fontSize: 7 },
+  gridCell: { borderRightWidth: 0.5, borderRightColor: BOX_BORDER, paddingVertical: 2, paddingHorizontal: 1, justifyContent: "center" },
+  gridHead: { fontWeight: "bold", fontSize: 5.6, textAlign: "center" },
+  gridTd: { fontSize: 6.2, textAlign: "center" },
 });
 
 function fmt(value: string | number | boolean | null | undefined): string {
@@ -110,66 +115,114 @@ function fmt(value: string | number | boolean | null | undefined): string {
   return String(value);
 }
 
-/** Label + dotted-underlined value, the model form's field idiom. */
-function Line({ label, value, flex }: { label: string; value?: string | number | boolean | null; flex?: number }) {
+function SectionBar({ letter, title }: { letter?: string; title: string }) {
   return (
-    <View style={[s.lineRow, flex !== undefined ? { flex } : {}]}>
-      <Text style={s.lineLabel}>{label}</Text>
-      <Text style={s.lineValue}>{fmt(value)}</Text>
+    <Text style={s.bar}>
+      {letter ? `${letter}. ` : ""}
+      {title.toUpperCase()}
+    </Text>
+  );
+}
+
+/** Label beside a white value box, the field idiom of the real certificates. */
+function Field({
+  label,
+  value,
+  flex = 1,
+  unit,
+}: {
+  label: string;
+  value?: string | number | boolean | null;
+  flex?: number;
+  unit?: string;
+}) {
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", flex, gap: 3 }}>
+      <Text style={s.label}>{label}</Text>
+      <Text style={[s.boxValue, { flex: 1 }]}>{fmt(value)}</Text>
+      {unit ? <Text style={s.label}>{unit}</Text> : null}
     </View>
   );
 }
 
-function CheckBox({ checked, label }: { checked: boolean; label?: string }) {
+/** A white box holding a drawn tick, or text such as N/A. */
+function MarkBox({ state }: { state: "tick" | "cross" | string }) {
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", marginRight: 8 }}>
-      {label ? <Text style={{ marginRight: 2 }}>{label}</Text> : null}
-      <Svg width={8} height={8} viewBox="0 0 10 10">
-        <Path d="M0.5 0.5 H9.5 V9.5 H0.5 Z" stroke={INK} strokeWidth={1} fill="none" />
-        {checked ? <Path d="M2 2 L8 8 M8 2 L2 8" stroke={INK} strokeWidth={1.2} fill="none" /> : null}
-      </Svg>
+    <View
+      style={{
+        backgroundColor: "#ffffff",
+        borderWidth: 0.6,
+        borderColor: BOX_BORDER,
+        width: 26,
+        height: 12,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      {state === "tick" ? (
+        <Svg width={9} height={9} viewBox="0 0 10 10">
+          <Path d="M1.5 5.5 L4 8 L8.5 2" stroke={INK} strokeWidth={1.6} fill="none" />
+        </Svg>
+      ) : state === "cross" ? (
+        <Svg width={8} height={8} viewBox="0 0 10 10">
+          <Path d="M2 2 L8 8 M8 2 L2 8" stroke={INK} strokeWidth={1.4} fill="none" />
+        </Svg>
+      ) : (
+        <Text style={{ fontSize: 6.5 }}>{state}</Text>
+      )}
     </View>
   );
 }
 
-/** A genuine tick, drawn as vector so no font glyph is needed. */
-function Tick({ size = 7 }: { size?: number }) {
+function Choice({ label, state }: { label: string; state: "tick" | string }) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 10 10">
-      <Path d="M1.5 5.5 L4 8 L8.5 2" stroke={INK} strokeWidth={1.4} fill="none" />
-    </Svg>
-  );
-}
-
-function Section({ letter, title, children }: { letter?: string; title: string; children: React.ReactNode }) {
-  return (
-    <View style={s.section} wrap={false}>
-      <Text style={s.sectionTitle}>
-        {letter ? `SECTION ${letter}. ` : ""}
-        {title}
-      </Text>
-      <View style={s.sectionBody}>{children}</View>
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 3, marginRight: 8 }}>
+      <Text style={s.label}>{label}</Text>
+      <MarkBox state={state} />
     </View>
   );
 }
 
-function Footer({ reference, orgName, jobNumber }: { reference: string; orgName: string; jobNumber?: string | null }) {
+/** Colour-filled outcome chip, exactly as the real schedules print them. */
+function OutcomeChip({ outcome }: { outcome?: ScheduleOutcome }) {
+  if (!outcome) return <View style={s.chip} />;
+  const map: Record<ScheduleOutcome, { bg: string; fg: string; label: string }> = {
+    ok: { bg: GREEN, fg: "#ffffff", label: "Pass" },
+    C1: { bg: RED, fg: "#ffffff", label: "C1" },
+    C2: { bg: RED, fg: "#ffffff", label: "C2" },
+    C3: { bg: ORANGE, fg: "#111111", label: "C3" },
+    FI: { bg: YELLOW, fg: "#111111", label: "FI" },
+    NV: { bg: LAVENDER, fg: "#111111", label: "N/V" },
+    LIM: { bg: LIGHT_BLUE, fg: "#111111", label: "LIM" },
+    NA: { bg: "#ffffff", fg: "#111111", label: "N/A" },
+  };
+  const m = map[outcome];
+  return (
+    <View style={[s.chip, { backgroundColor: m.bg }]}>
+      <Text style={[s.chipText, { color: m.fg }]}>{m.label}</Text>
+    </View>
+  );
+}
+
+function CodeChip({ code }: { code?: string }) {
+  const bg = code === "C1" || code === "C2" ? RED : code === "C3" ? ORANGE : code === "FI" ? YELLOW : "#ffffff";
+  const fg = code === "C1" || code === "C2" ? "#ffffff" : "#111111";
+  return (
+    <View style={{ backgroundColor: bg, alignItems: "center", justifyContent: "center", flex: 1 }}>
+      <Text style={{ color: fg, fontWeight: "bold", fontSize: 7.5 }}>{code ?? ""}</Text>
+    </View>
+  );
+}
+
+function Footer({ reference }: { reference: string }) {
   return (
     <View style={s.footer} fixed>
       <Text>
-        Report No: {reference}
-        {jobNumber ? `   Job No: ${jobNumber}` : ""}
+        This form is based on the model shown in Appendix 6 of BS 7671:2018 (as amended). Produced using FieldCert.
       </Text>
-      <Text render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
-      <Text>
-        {orgName} · Generated with FieldCert
-      </Text>
+      <Text render={({ pageNumber, totalPages }) => `Ref: ${reference} - Page: ${pageNumber} of ${totalPages}`} />
     </View>
   );
-}
-
-function ReportNoRight({ reference }: { reference: string }) {
-  return <Text style={s.reportNo}>Report No: {reference}</Text>;
 }
 
 const CONCEALED_CABLES =
@@ -181,603 +234,694 @@ const DECLARATION =
 const RECOMMENDATIONS_TEXT =
   "Where the overall assessment of the suitability of the installation for continued use above is stated as UNSATISFACTORY, I/we recommend that any observations classified as 'Danger present' (code C1) or 'Potentially dangerous' (code C2) are acted upon as a matter of urgency. Investigation without delay is recommended for observations identified as 'Further investigation required' (code FI). Observations classified as 'Improvement recommended' (code C3) should be given due consideration.";
 
-function DeclarationColumn({
-  heading,
-  name,
-  date,
-  orgName,
-}: {
-  heading: string;
-  name?: string;
-  date?: string;
-  orgName: string;
-}) {
-  return (
-    <View style={{ flex: 1, padding: 4 }}>
-      <Text style={[s.bold, { marginBottom: 3 }]}>{heading}</Text>
-      <Line label="Name (Capitals)" value={name?.toUpperCase()} />
-      <View style={s.lineRow}>
-        <Text style={s.lineLabel}>Signature</Text>
-        <Text style={[s.lineValue, { fontStyle: "italic" }]}>{name ?? ""}</Text>
-      </View>
-      <Line label="For/on behalf of" value={orgName} />
-      <Line label="Position" value="" />
-      <Line label="Date" value={date} />
-    </View>
-  );
-}
-
 /* ------------------------------------------------------------------ */
-/* Landscape schedules                                                  */
+/* Landscape combined schedule                                          */
 /* ------------------------------------------------------------------ */
 
-interface Col {
-  n: number | null;
+interface ColDef {
   label: string;
-  width: number | null; // null = flex
-  value: (c: CircuitDetails, t: CircuitTestResults | undefined) => string;
+  width: number | null;
+  group: string;
+  value: (board: DistributionBoard, ci: number) => string | { mark: "tick" };
 }
 
-const CIRCUIT_COLS: Col[] = [
-  { n: 1, label: "Circuit number", width: 30, value: (c) => fmt(c.circuitNumber) },
-  { n: 2, label: "Circuit description", width: null, value: (c) => fmt(c.description) },
-  { n: 3, label: "Type of wiring", width: 34, value: (c) => fmt(c.wiringType) },
-  { n: 4, label: "Reference method", width: 38, value: (c) => fmt(c.referenceMethod) },
-  { n: 5, label: "Number of points served", width: 38, value: (c) => fmt(c.numberOfPoints) },
-  { n: 6, label: "Live (mm²)", width: 34, value: (c) => fmt(c.liveCsaMm2) },
-  { n: 7, label: "cpc (mm²)", width: 34, value: (c) => fmt(c.cpcCsaMm2) },
-  { n: 8, label: "BS (EN)", width: 56, value: (c) => fmt(c.ocpd?.standard) },
-  { n: 9, label: "Type", width: 28, value: (c) => fmt(c.ocpd?.curve) },
-  { n: 10, label: "Rating (A)", width: 32, value: (c) => fmt(c.ocpd?.ratingA) },
-  { n: 11, label: "Breaking capacity (kA)", width: 40, value: (c) => fmt(c.ocpd?.breakingCapacityKa) },
+function tr(board: DistributionBoard, ci: number) {
+  const circuit = board.circuits[ci]!;
+  return board.testResults.find((t) => t.circuitId === circuit.id);
+}
+
+const COLS: ColDef[] = [
+  { label: "Circuit number", width: 24, group: "", value: (b, i) => fmt(b.circuits[i]!.circuitNumber) },
+  { label: "Circuit description", width: null, group: "", value: (b, i) => fmt(b.circuits[i]!.description) },
+  { label: "Type of wiring", width: 24, group: "Conductor details", value: (b, i) => fmt(b.circuits[i]!.wiringType) },
+  { label: "Reference method", width: 26, group: "Conductor details", value: (b, i) => fmt(b.circuits[i]!.referenceMethod) },
+  { label: "Number of points served", width: 26, group: "Conductor details", value: (b, i) => fmt(b.circuits[i]!.numberOfPoints) },
+  { label: "Live (mm²)", width: 24, group: "Conductor details", value: (b, i) => fmt(b.circuits[i]!.liveCsaMm2) },
+  { label: "cpc (mm²)", width: 24, group: "Conductor details", value: (b, i) => fmt(b.circuits[i]!.cpcCsaMm2) },
+  { label: "Max disconnect time (s)", width: 28, group: "Conductor details", value: (b, i) => fmt(b.circuits[i]!.maxDisconnectionTimeS) },
+  { label: "BS (EN)", width: 38, group: "Overcurrent protective device", value: (b, i) => fmt(b.circuits[i]!.ocpd?.standard) },
+  { label: "Type", width: 20, group: "Overcurrent protective device", value: (b, i) => fmt(b.circuits[i]!.ocpd?.curve) },
+  { label: "Rating (A)", width: 24, group: "Overcurrent protective device", value: (b, i) => fmt(b.circuits[i]!.ocpd?.ratingA) },
+  { label: "Breaking capacity (kA)", width: 28, group: "Overcurrent protective device", value: (b, i) => fmt(b.circuits[i]!.ocpd?.breakingCapacityKa) },
   {
-    n: 12,
     label: "Maximum permitted Zs (Ω)",
-    width: 44,
-    value: (c) => {
-      const max = maxZsOhms(c);
+    width: 30,
+    group: "Overcurrent protective device",
+    value: (b, i) => {
+      const max = maxZsOhms(b.circuits[i]!);
       return max === null ? "" : max.toFixed(2);
     },
   },
-  { n: 13, label: "BS (EN)", width: 46, value: (c) => (c.rcd ? "BS EN 61008/9" : "") },
-  { n: 14, label: "Type", width: 28, value: (c) => fmt(c.rcd?.type) },
-  { n: 15, label: "IΔn (mA)", width: 32, value: (c) => fmt(c.rcd?.iDeltaNMa) },
-  { n: 16, label: "Rating (A)", width: 32, value: (c) => fmt(c.rcd?.ratingA) },
+  { label: "BS (EN)", width: 34, group: "RCD", value: (b, i) => (b.circuits[i]!.rcd ? "61008/9" : "") },
+  { label: "Type", width: 20, group: "RCD", value: (b, i) => fmt(b.circuits[i]!.rcd?.type) },
+  { label: "IΔn (mA)", width: 24, group: "RCD", value: (b, i) => fmt(b.circuits[i]!.rcd?.iDeltaNMa) },
+  { label: "Rating (A)", width: 24, group: "RCD", value: (b, i) => fmt(b.circuits[i]!.rcd?.ratingA) },
+  { label: "r1 (line) (Ω)", width: 24, group: "Continuity (Ω)", value: (b, i) => fmt(tr(b, i)?.ringContinuity?.rLineOhms) },
+  { label: "rn (neutral) (Ω)", width: 24, group: "Continuity (Ω)", value: (b, i) => fmt(tr(b, i)?.ringContinuity?.rNeutralOhms) },
+  { label: "r2 (cpc) (Ω)", width: 24, group: "Continuity (Ω)", value: (b, i) => fmt(tr(b, i)?.ringContinuity?.rCpcOhms) },
+  { label: "R1+R2 (Ω)", width: 26, group: "Continuity (Ω)", value: (b, i) => fmt(tr(b, i)?.r1PlusR2Ohms) },
+  { label: "R2 (Ω)", width: 22, group: "Continuity (Ω)", value: (b, i) => fmt(tr(b, i)?.r2Ohms) },
+  { label: "Test voltage (V)", width: 26, group: "Insulation resistance", value: (b, i) => fmt(tr(b, i)?.insulationResistance?.testVoltageV) },
+  { label: "Live-Live (MΩ)", width: 26, group: "Insulation resistance", value: (b, i) => fmt(tr(b, i)?.insulationResistance?.liveLiveMohm) },
+  { label: "Live-Earth (MΩ)", width: 26, group: "Insulation resistance", value: (b, i) => fmt(tr(b, i)?.insulationResistance?.liveEarthMohm) },
+  { label: "Polarity", width: 22, group: "", value: (b, i) => (tr(b, i)?.polarityConfirmed ? { mark: "tick" } : "") },
+  { label: "Maximum measured Zs (Ω)", width: 30, group: "Zs", value: (b, i) => fmt(tr(b, i)?.zsOhms) },
+  { label: "Disconnect time (ms)", width: 30, group: "RCD test", value: (b, i) => fmt(tr(b, i)?.rcdOperatingTimeMs) },
+  { label: "Test button", width: 26, group: "RCD test", value: (b, i) => (tr(b, i)?.rcdTestButtonOk ? { mark: "tick" } : "") },
+  { label: "AFDD test", width: 24, group: "", value: (b, i) => (tr(b, i)?.afddTestOk ? { mark: "tick" } : "") },
 ];
 
-const TEST_COLS: Col[] = [
-  { n: 17, label: "Circuit number", width: 30, value: (c) => fmt(c.circuitNumber) },
-  { n: 18, label: "r1 (line) (Ω)", width: 36, value: (_, t) => fmt(t?.ringContinuity?.rLineOhms) },
-  { n: 19, label: "rn (neutral) (Ω)", width: 36, value: (_, t) => fmt(t?.ringContinuity?.rNeutralOhms) },
-  { n: 20, label: "r2 (cpc) (Ω)", width: 36, value: (_, t) => fmt(t?.ringContinuity?.rCpcOhms) },
-  { n: 21, label: "(R1 + R2) (Ω)", width: 38, value: (_, t) => fmt(t?.r1PlusR2Ohms) },
-  { n: 22, label: "R2 (Ω)", width: 32, value: (_, t) => fmt(t?.r2Ohms) },
-  { n: 23, label: "Test voltage (V)", width: 36, value: (_, t) => fmt(t?.insulationResistance?.testVoltageV) },
-  { n: 24, label: "Live-Live (MΩ)", width: 38, value: (_, t) => fmt(t?.insulationResistance?.liveLiveMohm) },
-  { n: 25, label: "Live-Earth (MΩ)", width: 38, value: (_, t) => fmt(t?.insulationResistance?.liveEarthMohm) },
-  { n: 26, label: "Polarity", width: 32, value: (_, t) => (t?.polarityConfirmed ? "OK" : "") },
-  { n: 27, label: "Maximum measured Zs (Ω)", width: 44, value: (_, t) => fmt(t?.zsOhms) },
-  { n: 28, label: "RCD disconnection time (ms)", width: 46, value: (_, t) => fmt(t?.rcdOperatingTimeMs) },
-  { n: 29, label: "Test button operation", width: 38, value: (_, t) => (t?.rcdTestButtonOk ? "OK" : "") },
-  { n: 30, label: "AFDD manual test", width: 36, value: (_, t) => (t?.afddTestOk ? "OK" : "") },
-  { n: 31, label: "Remarks", width: null, value: (_, t) => fmt(t?.remarks) },
-];
+const MIN_CIRCUIT_ROWS = 10;
 
-function ScheduleGrid({ board, cols }: { board: DistributionBoard; cols: Col[] }) {
+function CombinedSchedule({ board }: { board: DistributionBoard }) {
+  const rows = Math.max(board.circuits.length, MIN_CIRCUIT_ROWS);
   return (
-    <View>
-      <View style={s.headRow}>
-        {cols.map((col) => (
-          <View key={col.label + col.n} style={[s.cell, col.width ? { width: col.width } : { flex: 1 }]}>
-            <Text style={[s.th, { marginBottom: 2 }]}>{col.n}</Text>
-            <Text style={s.th}>{col.label}</Text>
+    <View style={{ borderWidth: 0.8, borderColor: INK }}>
+      {/* Group header: circuit details vs test results */}
+      <View style={{ flexDirection: "row", borderBottomWidth: 0.6, borderBottomColor: INK, backgroundColor: "#dddddd" }}>
+        <View style={{ flex: 2.9, borderRightWidth: 0.6, borderRightColor: INK, alignItems: "center" }}>
+          <Text style={[s.bold, { fontSize: 6.5 }]}>CIRCUIT DETAILS</Text>
+        </View>
+        <View style={{ flex: 1.55, alignItems: "center" }}>
+          <Text style={[s.bold, { fontSize: 6.5 }]}>TEST RESULT DETAILS</Text>
+        </View>
+      </View>
+      {/* Column labels */}
+      <View style={{ flexDirection: "row", borderBottomWidth: 0.6, borderBottomColor: INK, backgroundColor: PANEL, minHeight: 34 }}>
+        {COLS.map((col, i) => (
+          <View key={i} style={[s.gridCell, col.width ? { width: col.width } : { flex: 1 }]}>
+            <Text style={s.gridHead}>{col.label}</Text>
           </View>
         ))}
       </View>
-      {board.circuits.map((circuit) => {
-        const tr = board.testResults.find((t) => t.circuitId === circuit.id);
-        return (
-          <View key={circuit.id} style={s.bodyRow} wrap={false}>
-            {cols.map((col) => (
-              <View key={col.label + col.n} style={[s.cell, col.width ? { width: col.width } : { flex: 1 }]}>
-                <Text style={[s.td, col.n === 2 || col.n === 31 ? { textAlign: "left" } : {}]}>
-                  {col.value(circuit, tr)}
-                </Text>
+      {Array.from({ length: rows }, (_, ci) => (
+        <View
+          key={ci}
+          style={{ flexDirection: "row", borderBottomWidth: ci === rows - 1 ? 0 : 0.4, borderBottomColor: BOX_BORDER, minHeight: 13 }}
+          wrap={false}
+        >
+          {COLS.map((col, i) => {
+            const value = ci < board.circuits.length ? col.value(board, ci) : "";
+            return (
+              <View key={i} style={[s.gridCell, col.width ? { width: col.width } : { flex: 1 }, { alignItems: "center" }]}>
+                {typeof value === "object" ? (
+                  <Svg width={8} height={8} viewBox="0 0 10 10">
+                    <Path d="M1.5 5.5 L4 8 L8.5 2" stroke={INK} strokeWidth={1.6} fill="none" />
+                  </Svg>
+                ) : (
+                  <Text style={[s.gridTd, col.width === null ? { textAlign: "left", alignSelf: "stretch", paddingLeft: 2 } : {}]}>
+                    {value}
+                  </Text>
+                )}
               </View>
-            ))}
-          </View>
-        );
-      })}
+            );
+          })}
+        </View>
+      ))}
     </View>
   );
 }
 
-function BoardHeaderLine({ board, cert }: { board: DistributionBoard; cert: Eicr }) {
-  return (
-    <View style={{ borderWidth: 1, borderColor: INK, padding: 4, marginBottom: 4 }}>
-      <Text style={[s.bold, { marginBottom: 3 }]}>Distribution board details</Text>
-      <View style={{ flexDirection: "row", gap: 10 }}>
-        <Line label="DB reference:" value={board.designation} flex={1.1} />
-        <Line label="Location:" value={board.location} flex={1.3} />
-        <Line label="Supplied from:" value={board.suppliedFrom} flex={1.3} />
-        <Line label="Zdb (Ω):" value={board.zDbOhms ?? cert.supply?.zeOhms} flex={0.8} />
-        <Line label="Ipf (kA):" value={board.prospectiveFaultCurrentKa ?? cert.supply?.prospectiveFaultCurrentKa} flex={0.8} />
-      </View>
-      <View style={{ flexDirection: "row", gap: 10, marginTop: 2, alignItems: "center" }}>
-        <Line label="Main switch BS (EN):" value={board.mainSwitch?.bsStandard} flex={1.4} />
-        <Line label="Rating (A):" value={board.mainSwitch?.ratingA} flex={0.7} />
-        <Line label="Voltage (V):" value={board.mainSwitch?.voltageV} flex={0.7} />
-        <Line label="SPD type(s):" value={board.spd?.type} flex={0.9} />
-        <View style={{ flexDirection: "row", alignItems: "center" }}>
-          <Text style={{ marginRight: 3 }}>Correct polarity confirmed</Text>
-          <CheckBox checked={board.supplyPolarityConfirmed === "pass"} />
-          <Text style={{ marginRight: 3 }}>Phase sequence confirmed</Text>
-          <CheckBox checked={board.phaseSequenceConfirmed === "pass"} />
-        </View>
-      </View>
-    </View>
-  );
-}
+const WIRING_CODES: Array<[string, string]> = [
+  ["A", "Thermoplastic insulated/sheathed cables"],
+  ["B", "Thermoplastic cables in metallic conduit"],
+  ["C", "Thermoplastic cables in nonmetallic conduit"],
+  ["D", "Thermoplastic cables in metallic trunking"],
+  ["E", "Thermoplastic cables in nonmetallic trunking"],
+  ["F", "Thermoplastic /SWA cables"],
+  ["G", "Thermosetting /SWA cables"],
+  ["H", "Mineral insulated cables"],
+  ["O", "Other"],
+];
 
 /* ------------------------------------------------------------------ */
 /* Document                                                             */
 /* ------------------------------------------------------------------ */
 
-export function EicrPdf({ cert, orgName, reference, issuedAt, jobNumber }: EicrPdfProps) {
+const MIN_OBSERVATION_ROWS = 6;
+
+export function EicrPdf({ cert, orgName, reference, issuedAt }: EicrPdfProps) {
   const outcomes = cert.inspectionSchedule ?? {};
   const satisfactory = cert.overallAssessment === "satisfactory";
   const premises = cert.descriptionOfPremises;
   const supply = cert.supply;
   const particulars = cert.particulars;
-  const liveConductors = supply?.liveConductors ?? "";
   const bonded = new Set((particulars?.bondedServices ?? []).map((b) => b.toLowerCase()));
-  const scheduleCount = Math.max(1, cert.boards.length);
 
-  const footer = <Footer reference={reference} orgName={orgName} jobNumber={jobNumber} />;
+  const itemsByCode = (code: string) =>
+    cert.observations
+      .map((o, i) => ({ n: i + 1, code: o.code }))
+      .filter((o) => o.code === code)
+      .map((o) => o.n)
+      .join(", ") || "N/A";
+
+  const premisesChoice = (kind: string) => (premises === kind ? "tick" : "N/A");
 
   return (
     <Document title={`EICR ${reference}`} author={orgName} creator="FieldCert">
-      {/* ---------------- Page 1: Sections A-H ---------------- */}
+      {/* ---------------- Page 1: header + A-F ---------------- */}
       <Page size="A4" style={s.page}>
-        <View style={s.titleRow}>
-          <Text style={s.docTitle}>ELECTRICAL INSTALLATION CONDITION REPORT</Text>
-          <ReportNoRight reference={reference} />
+        <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: 6, marginBottom: 4 }}>
+          <Field label="Date" value={issuedAt.slice(0, 10)} flex={0.35} />
+          <Field label="Certificate Serial No/Ref:" value={reference} flex={0.5} />
+        </View>
+        <Text style={{ color: ACCENT, fontSize: 15, fontWeight: "bold" }}>{orgName}</Text>
+        <Text style={{ fontSize: 13.5, fontWeight: "bold", marginBottom: 1 }}>
+          Electrical Installation Condition Report
+        </Text>
+        <Text style={[s.small, { marginBottom: 6 }]}>
+          (Requirements for Electrical Installations - BS 7671 IET Wiring Regulations)
+        </Text>
+
+        <SectionBar letter="A" title="Details of the client or person ordering the work" />
+        <View style={s.panel}>
+          <View style={s.row}>
+            <Field label="Name:" value={cert.client?.name ?? cert.client?.companyName} />
+          </View>
+          <View style={s.row}>
+            <Field
+              label="Address:"
+              value={[cert.client?.address?.line1, cert.client?.address?.town, cert.client?.address?.postcode]
+                .filter(Boolean)
+                .join(", ")}
+            />
+          </View>
         </View>
 
-        <Section letter="A" title="DETAILS OF THE PERSON ORDERING THE REPORT">
-          <Line label="Name" value={cert.client?.name ?? cert.client?.companyName} />
-          <Line
-            label="Address"
-            value={[
-              cert.client?.address?.line1,
-              cert.client?.address?.town,
-              cert.client?.address?.postcode,
-            ]
-              .filter(Boolean)
-              .join(", ")}
-          />
-        </Section>
-
-        <Section letter="B" title="REASON FOR PRODUCING THIS REPORT">
-          <Line label="" value={cert.purposeOfReport} />
-          <Line label="Date(s) on which inspection and testing was carried out" value={cert.inspectionDate} />
-        </Section>
-
-        <Section letter="C" title="DETAILS OF THE INSTALLATION WHICH IS THE SUBJECT OF THIS REPORT">
-          <Line label="Occupier" value={cert.occupier} />
-          <Line
-            label="Address"
-            value={[
-              cert.installationAddress?.line1,
-              cert.installationAddress?.line2,
-              cert.installationAddress?.town,
-              cert.installationAddress?.county,
-              cert.installationAddress?.postcode,
-            ]
-              .filter(Boolean)
-              .join(", ")}
-          />
-          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 3, flexWrap: "wrap" }}>
-            <Text style={{ marginRight: 6 }}>Description of premises</Text>
-            <CheckBox label="Residential" checked={premises === "domestic"} />
-            <CheckBox label="Commercial" checked={premises === "commercial"} />
-            <CheckBox label="Industrial" checked={premises === "industrial"} />
-            <CheckBox label="Other" checked={premises === "other"} />
+        <SectionBar letter="B" title="Reason for producing this report" />
+        <View style={s.panel}>
+          <View style={s.row}>
+            <Text style={[s.boxValue, { flex: 1, minHeight: 20 }]}>{fmt(cert.purposeOfReport)}</Text>
           </View>
-          <View style={{ flexDirection: "row", gap: 12 }}>
-            <Line label="Estimated age of wiring system" value={cert.estimatedAgeYears !== undefined ? `${cert.estimatedAgeYears} years` : ""} flex={1} />
-            <View style={{ flexDirection: "row", alignItems: "center", flex: 1.4 }}>
-              <Text style={{ marginRight: 4 }}>Evidence of additions / alterations?</Text>
-              <CheckBox label="Yes" checked={cert.evidenceOfAlterations === true} />
-              <CheckBox label="No" checked={cert.evidenceOfAlterations === false} />
-              <CheckBox label="Not apparent" checked={false} />
-            </View>
+          <View style={[s.row, { justifyContent: "flex-end" }]}>
+            <Field label="Date(s) inspection and testing carried out:" value={cert.inspectionDate} flex={0.6} />
           </View>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <Text>Installation records available? (Regulation 651.1)</Text>
-            <CheckBox label="Yes" checked={cert.installationRecordsAvailable === true} />
-            <CheckBox label="No" checked={cert.installationRecordsAvailable === false} />
-            <Line label="Date of last inspection" value={cert.dateOfLastInspection} flex={1} />
-          </View>
-        </Section>
+        </View>
 
-        <Section letter="D" title="EXTENT AND LIMITATIONS OF INSPECTION AND TESTING">
-          <Line label="Extent of the electrical installation covered by this report" value={cert.extentOfInstallationCovered} />
-          <Line label="Agreed limitations including the reasons (see Regulation 653.2)" value={cert.limitations} />
-          <Line label="Agreed with:" value={cert.agreedWith} />
-          <Line label="Operational limitations including the reasons" value={cert.operationalLimitations} />
-          <Text style={s.para}>
+        <SectionBar letter="C" title="Details of the installation which is the subject of this report" />
+        <View style={s.panel}>
+          <View style={s.row}>
+            <Field label="Occupier:" value={cert.occupier} />
+          </View>
+          <View style={s.row}>
+            <Field
+              label="Address:"
+              value={[
+                cert.installationAddress?.line1,
+                cert.installationAddress?.line2,
+                cert.installationAddress?.town,
+                cert.installationAddress?.county,
+                cert.installationAddress?.postcode,
+              ]
+                .filter(Boolean)
+                .join(", ")}
+            />
+          </View>
+          <View style={s.row}>
+            <Text style={s.label}>Description of premises:</Text>
+            <Choice label="Domestic" state={premisesChoice("domestic")} />
+            <Choice label="Commercial" state={premisesChoice("commercial")} />
+            <Choice label="Industrial" state={premisesChoice("industrial")} />
+            <Choice label="Other" state={premisesChoice("other")} />
+          </View>
+          <View style={s.row}>
+            <Field label="Estimated age of the wiring system" value={cert.estimatedAgeYears} flex={0.5} unit="Years" />
+            <Text style={s.label}>Evidence of additions or alterations:</Text>
+            <Choice label="Yes" state={cert.evidenceOfAlterations === true ? "tick" : "N/A"} />
+            <Choice label="No" state={cert.evidenceOfAlterations === false ? "tick" : "N/A"} />
+          </View>
+          <View style={s.row}>
+            <Text style={s.label}>Installation records available? (Regulation 651.1)</Text>
+            <Choice label="Yes" state={cert.installationRecordsAvailable === true ? "tick" : "N/A"} />
+            <Choice label="No" state={cert.installationRecordsAvailable === false ? "tick" : "N/A"} />
+            <Field label="Date of last inspection:" value={cert.dateOfLastInspection ?? "Unknown"} flex={0.6} />
+          </View>
+        </View>
+
+        <SectionBar letter="D" title="Extent and limitations of inspection and testing" />
+        <View style={s.panel}>
+          <View style={s.row}>
+            <Field label="Extent of the electrical installation covered by this report" value={cert.extentOfInstallationCovered} />
+          </View>
+          <Text style={[s.label, { marginBottom: 1 }]}>Agreed limitations including the reasons, see Regulation 653.2:</Text>
+          <Text style={[s.boxValue, { minHeight: 24, marginBottom: 3 }]}>{fmt(cert.limitations)}</Text>
+          <View style={s.row}>
+            <Field label="Limitations agreed with" value={cert.agreedWith} />
+          </View>
+          <Text style={[s.label, { marginBottom: 1 }]}>Operational limitations including the reasons:</Text>
+          <Text style={[s.boxValue, { minHeight: 16, marginBottom: 3 }]}>{fmt(cert.operationalLimitations)}</Text>
+          <Text style={s.small}>
             The inspection and testing detailed in this report and accompanying schedules have been carried out in
-            accordance with BS 7671:2018 as amended to <Text style={s.bold}>A3:2024</Text>.
+            accordance with BS 7671:2018 (IET Wiring Regulations) as amended to 2024. {CONCEALED_CABLES}
           </Text>
-          <Text style={[s.para, s.small]}>{CONCEALED_CABLES}</Text>
-        </Section>
+        </View>
 
-        <Section letter="E" title="SUMMARY OF THE CONDITION OF THE INSTALLATION">
-          <Line label="General condition of the installation (in terms of electrical safety)" value={cert.generalCondition} />
-          <View style={{ flexDirection: "row", alignItems: "center", marginTop: 2, marginBottom: 2 }}>
-            <Text>Overall assessment of the installation in terms of its suitability for continued use: </Text>
-            <Text style={[s.bold, { fontSize: 9 }, satisfactory ? {} : { color: "#b00000" }]}>
+        <SectionBar letter="E" title="Summary of the condition of the installation" />
+        <View style={s.panel}>
+          <Text style={[s.label, { marginBottom: 1 }]}>
+            General condition of the installation (in terms of electrical safety):
+          </Text>
+          <Text style={[s.boxValue, { minHeight: 20, marginBottom: 4 }]}>{fmt(cert.generalCondition)}</Text>
+          <Text style={[s.bold, { textAlign: "center", marginBottom: 2 }]}>
+            Overall assessment of the installation in terms of its suitability for continued use:
+          </Text>
+          <View
+            style={{
+              alignSelf: "center",
+              backgroundColor: satisfactory ? GREEN : RED,
+              paddingVertical: 4,
+              paddingHorizontal: 30,
+              marginBottom: 3,
+            }}
+          >
+            <Text style={{ color: "#ffffff", fontWeight: "bold", fontSize: 10 }}>
               {satisfactory ? "SATISFACTORY" : "UNSATISFACTORY"}
             </Text>
           </View>
-          <Text style={s.small}>
-            *An unsatisfactory assessment indicates that dangerous (code C1) and/or potentially dangerous (code C2)
-            conditions have been identified.
+          <Text style={[s.small, s.bold]}>
+            An unsatisfactory assessment indicates that dangerous (code C1) and/or potentially dangerous (code C2)
+            conditions have been identified
           </Text>
-        </Section>
+        </View>
 
-        <Section letter="F" title="RECOMMENDATIONS">
-          <Text style={[s.para, s.small]}>{RECOMMENDATIONS_TEXT}</Text>
-          <Line
-            label="Subject to the necessary remedial action being taken, I/We recommend that the installation is further inspected and tested by"
-            value={cert.nextInspectionDue}
-          />
-        </Section>
-
-        <Section letter="G" title="DECLARATION">
-          <Text style={[s.para, s.small, s.bold]}>{DECLARATION}</Text>
-          <View style={{ flexDirection: "row", borderTopWidth: 0.5, borderTopColor: RULE }}>
-            <DeclarationColumn
-              heading="Inspected and tested by:"
-              name={cert.inspector?.name}
-              date={cert.inspectorSignedAt}
-              orgName={orgName}
-            />
-            <View style={{ width: 0.5, backgroundColor: RULE }} />
-            <DeclarationColumn
-              heading="Report authorised for issue by:"
-              name={cert.qsReviewer?.name ?? cert.inspector?.name}
-              date={cert.qsSignedAt ?? cert.inspectorSignedAt ?? issuedAt.slice(0, 10)}
-              orgName={orgName}
+        <SectionBar letter="F" title="Recommendations" />
+        <View style={s.panel}>
+          <Text style={[s.small, { marginBottom: 3 }]}>{RECOMMENDATIONS_TEXT}</Text>
+          <View style={s.row}>
+            <Field
+              label="Subject to the necessary remedial action being taken, I/we recommend that the installation is further inspected and tested by"
+              value={cert.nextInspectionDue}
+              flex={1}
             />
           </View>
-        </Section>
+        </View>
 
-        <Section letter="H" title="SCHEDULE(S)">
-          <Text>
-            <Text style={s.bold}>1</Text> Inspection Schedule(s) and <Text style={s.bold}>{scheduleCount}</Text>{" "}
-            Schedule(s) of Circuit Details and Test Results are attached.
-          </Text>
-          <Text>
-            The attached schedule(s) are part of this document and this report is valid only when they are attached to
-            it.
-          </Text>
-        </Section>
-
-        {footer}
+        <Footer reference={reference} />
       </Page>
 
-      {/* ---------------- Page 2: Sections I-K ---------------- */}
+      {/* ---------------- Page 2: G observations, H schedules note ---------------- */}
       <Page size="A4" style={s.page}>
-        <View style={{ alignItems: "flex-end", marginBottom: 4 }}>
-          <ReportNoRight reference={reference} />
-        </View>
-
-        <Section letter="I" title="SUPPLY CHARACTERISTICS AND EARTHING ARRANGEMENTS">
-          <View style={{ flexDirection: "row" }}>
-            <View style={{ width: 92, borderRightWidth: 0.5, borderRightColor: RULE, paddingRight: 4 }}>
-              <Text style={[s.bold, { marginBottom: 2 }]}>Earthing arrangements</Text>
-              {(["TN-C", "TN-S", "TN-C-S", "TT", "IT"] as const).map((sys) => (
-                <View key={sys} style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 1.5 }}>
-                  <Text>{sys}</Text>
-                  <CheckBox checked={supply?.earthing === sys} />
-                </View>
-              ))}
-            </View>
-            <View style={{ flex: 1.2, borderRightWidth: 0.5, borderRightColor: RULE, paddingHorizontal: 4 }}>
-              <Text style={[s.bold, { marginBottom: 2 }]}>Number and Type of Live Conductors</Text>
-              {["1-phase, 2-wire", "1-phase, 3-wire", "2-phase, 3-wire", "3-phase, 3-wire", "3-phase, 4-wire"].map(
-                (label) => (
-                  <View key={label} style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 1.5 }}>
-                    <Text>AC  {label}</Text>
-                    <CheckBox checked={liveConductors.toLowerCase().startsWith(label.slice(0, 7).toLowerCase())} />
-                  </View>
-                )
-              )}
-            </View>
-            <View style={{ flex: 1.5, borderRightWidth: 0.5, borderRightColor: RULE, paddingHorizontal: 4 }}>
-              <Text style={[s.bold, { marginBottom: 2 }]}>Nature of Supply Parameters</Text>
-              <Line
-                label="Nominal voltage, U / U0"
-                value={
-                  supply?.nominalVoltageU !== undefined || supply?.nominalVoltageU0 !== undefined
-                    ? `${[supply?.nominalVoltageU, supply?.nominalVoltageU0].filter((v) => v !== undefined).join(" / ")} V`
-                    : ""
-                }
-              />
-              <Line label="Nominal frequency, f" value={supply?.frequencyHz !== undefined ? `${supply.frequencyHz} Hz` : ""} />
-              <Line label="Prospective fault current, Ipf" value={supply?.prospectiveFaultCurrentKa !== undefined ? `${supply.prospectiveFaultCurrentKa} kA` : ""} />
-              <Line label="External earth fault loop impedance, Ze" value={supply?.zeOhms !== undefined ? `${supply.zeOhms} Ω` : ""} />
-              <Text style={s.small}>(Note: (1) by enquiry (2) by enquiry or by measurement)</Text>
-            </View>
-            <View style={{ flex: 1, paddingLeft: 4 }}>
-              <Text style={[s.bold, { marginBottom: 2 }]}>Supply Protective Device</Text>
-              <Line label="BS (EN)" value={supply?.supplyProtectiveDevice?.standard} />
-              <Line label="Type" value={supply?.supplyProtectiveDevice?.type} />
-              <Line label="Rated current" value={supply?.supplyProtectiveDevice?.ratingA !== undefined ? `${supply.supplyProtectiveDevice.ratingA} A` : ""} />
-            </View>
-          </View>
-        </Section>
-
-        <Section letter="J" title="PARTICULARS OF INSTALLATION REFERRED TO IN THE REPORT">
-          <View style={{ flexDirection: "row", marginBottom: 3 }}>
-            <View style={{ width: 150, borderRightWidth: 0.5, borderRightColor: RULE, paddingRight: 4 }}>
-              <Text style={[s.bold, { marginBottom: 2 }]}>Means of Earthing</Text>
-              <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 1.5 }}>
-                <Text>Distributor&apos;s facility</Text>
-                <CheckBox checked={particulars?.meansOfEarthing === "distributor"} />
-              </View>
-              <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                <Text>Installation earth electrode</Text>
-                <CheckBox checked={particulars?.meansOfEarthing === "installation-electrode"} />
-              </View>
-            </View>
-            <View style={{ flex: 1, paddingLeft: 4 }}>
-              <Text style={[s.bold, { marginBottom: 2 }]}>Details of Installation Earth Electrode (where applicable)</Text>
-              <Line label="Type (e.g. rod(s), tape etc)" value={particulars?.earthElectrode?.type} />
-              <Line label="Location" value={particulars?.earthElectrode?.location} />
-              <Line label="Electrode resistance to Earth" value={particulars?.earthElectrode?.resistanceOhms !== undefined ? `${particulars.earthElectrode.resistanceOhms} Ω` : ""} />
-            </View>
-          </View>
-          <Text style={[s.bold, { marginBottom: 2 }]}>Main Protective Conductors</Text>
-          <View style={{ flexDirection: "row", gap: 10 }}>
-            <Line label="Earthing conductor: Material" value={particulars?.earthingConductor?.material} flex={1.2} />
-            <Line label="csa" value={particulars?.earthingConductor?.csaMm2 !== undefined ? `${particulars.earthingConductor.csaMm2} mm²` : ""} flex={0.7} />
-            <Line label="Main protective bonding: Material" value={particulars?.mainBondingConductor?.material} flex={1.2} />
-            <Line label="csa" value={particulars?.mainBondingConductor?.csaMm2 !== undefined ? `${particulars.mainBondingConductor.csaMm2} mm²` : ""} flex={0.7} />
-          </View>
-          <View style={{ flexDirection: "row", alignItems: "center", marginTop: 2, marginBottom: 3, flexWrap: "wrap" }}>
-            <CheckBox label="To water installation pipes" checked={bonded.has("water")} />
-            <CheckBox label="To gas installation pipes" checked={bonded.has("gas")} />
-            <CheckBox label="To oil installation pipes" checked={bonded.has("oil")} />
-            <CheckBox label="To structural steel" checked={bonded.has("structural steel") || bonded.has("steel")} />
-            <CheckBox label="To lightning protection" checked={bonded.has("lightning")} />
-          </View>
-          <Text style={[s.bold, { marginBottom: 2 }]}>Main switch / Switch-fuse / Circuit-breaker / RCD</Text>
-          <View style={{ flexDirection: "row", gap: 10 }}>
-            <Line label="Location" value={particulars?.mainSwitch?.location} flex={1.4} />
-            <Line label="BS (EN)" value={particulars?.mainSwitch?.bsStandard} flex={1} />
-            <Line label="No of poles" value={particulars?.mainSwitch?.poles} flex={0.6} />
-            <Line label="Current rating" value={particulars?.mainSwitch?.ratingA !== undefined ? `${particulars.mainSwitch.ratingA} A` : ""} flex={0.8} />
-          </View>
-        </Section>
-
-        <Section letter="K" title="OBSERVATIONS">
-          <Text style={{ marginBottom: 2 }}>
-            Referring to the attached inspection schedule(s) and schedule(s) of circuit details and test results:
+        <SectionBar letter="G" title="Observations and recommendations for actions to be taken" />
+        <View style={s.panel}>
+          <Text style={[s.small, { marginBottom: 2 }]}>
+            Referring to the attached schedules of inspection and test results, and subject to the limitations
+            specified under &apos;Extent and limitations of inspection and testing&apos;:
           </Text>
-          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 4 }}>
-            <CheckBox label="No remedial action is required" checked={cert.observations.length === 0} />
-            <CheckBox label="The following observations are made (see below)" checked={cert.observations.length > 0} />
+          <View style={s.row}>
+            <MarkBox state={cert.observations.length === 0 ? "tick" : "N/A"} />
+            <Text style={s.label}>There are no items adversely affecting electrical safety</Text>
+            <Text style={[s.label, s.bold]}>or</Text>
+            <MarkBox state={cert.observations.length > 0 ? "tick" : "N/A"} />
+            <Text style={s.label}>The following observations and recommendations are made</Text>
           </View>
-          <View style={{ borderWidth: 0.8, borderColor: INK }}>
-            <View style={{ flexDirection: "row", borderBottomWidth: 0.8, borderBottomColor: INK, backgroundColor: "#efefef" }}>
-              <Text style={[s.bold, { flex: 1, padding: 3 }]}>OBSERVATION(S) Include schedule reference, as appropriate</Text>
-              <Text style={[s.bold, { width: 80, padding: 3, borderLeftWidth: 0.8, borderLeftColor: INK, textAlign: "center" }]}>
-                Classification code
-              </Text>
+
+          <View style={{ borderWidth: 0.7, borderColor: INK, marginTop: 2 }}>
+            <View style={{ flexDirection: "row", backgroundColor: "#dddddd", borderBottomWidth: 0.7, borderBottomColor: INK }}>
+              <Text style={[s.bold, { width: 34, padding: 2, textAlign: "center" }]}>Item No</Text>
+              <Text style={[s.bold, { flex: 1, padding: 2, textAlign: "center" }]}>Observations</Text>
+              <Text style={[s.bold, { width: 60, padding: 2, textAlign: "center" }]}>Classification Code</Text>
             </View>
-            {cert.observations.length === 0 ? (
-              <Text style={{ padding: 4, color: "#555555" }}>None.</Text>
-            ) : (
-              cert.observations.map((obs) => (
-                <View key={obs.id} style={{ flexDirection: "row", borderBottomWidth: 0.4, borderBottomColor: RULE }}>
-                  <Text style={{ flex: 1, padding: 3 }}>
-                    {obs.itemNumber ? `[Item ${obs.itemNumber}] ` : ""}
-                    {obs.description ?? ""}
-                    {obs.location ? ` (${obs.location})` : ""}
-                  </Text>
-                  <Text
-                    style={[
-                      s.bold,
-                      { width: 80, padding: 3, borderLeftWidth: 0.4, borderLeftColor: RULE, textAlign: "center" },
-                    ]}
-                  >
-                    {obs.code ?? ""}
-                  </Text>
-                </View>
-              ))
-            )}
-          </View>
-          <View style={{ marginTop: 3 }}>
-            <Text style={s.small}>
-              One of the following codes, as appropriate, has been allocated to each of the observations made above to
-              indicate to the person(s) responsible for the installation the degree of urgency for remedial action.
-            </Text>
-            <Text style={s.small}>C1 - Danger present. Risk of injury. Immediate remedial action required</Text>
-            <Text style={s.small}>C2 - Potentially dangerous - urgent remedial action required</Text>
-            <Text style={s.small}>C3 - Improvement recommended</Text>
-            <Text style={s.small}>FI - Further investigation required without delay</Text>
-          </View>
-        </Section>
-
-        {footer}
-      </Page>
-
-      {/* ---------------- Landscape schedules per board ---------------- */}
-      {cert.boards.map((board) => (
-        <Page key={board.id} size="A4" orientation="landscape" style={s.page}>
-          <View style={s.titleRow}>
-            <Text style={s.docTitle}>GENERIC SCHEDULE OF CIRCUIT DETAILS</Text>
-            <ReportNoRight reference={reference} />
-          </View>
-          <BoardHeaderLine board={board} cert={cert} />
-          <View style={{ flexDirection: "row", marginBottom: 1 }}>
-            <Text style={[s.th, { flex: 1, textAlign: "center" }]}>CIRCUIT DETAILS</Text>
-          </View>
-          <ScheduleGrid board={board} cols={CIRCUIT_COLS} />
-
-          <View style={[s.titleRow, { marginTop: 12 }]}>
-            <Text style={s.docTitle}>GENERIC SCHEDULE OF TEST RESULTS</Text>
-          </View>
-          <ScheduleGrid board={board} cols={TEST_COLS} />
-          <View style={{ flexDirection: "row", gap: 14, marginTop: 6 }}>
-            <Line label="Tested by name (Capitals):" value={cert.inspector?.name?.toUpperCase()} flex={1.4} />
-            <View style={[s.lineRow, { flex: 1 }]}>
-              <Text style={s.lineLabel}>Signature:</Text>
-              <Text style={[s.lineValue, { fontStyle: "italic" }]}>{cert.inspector?.name ?? ""}</Text>
-            </View>
-            <Line label="Date:" value={cert.inspectionDate} flex={0.7} />
-          </View>
-          {footer}
-        </Page>
-      ))}
-
-      {/* ---------------- Condition report inspection schedule ---------------- */}
-      <Page size="A4" style={s.page}>
-        <View style={s.titleRow}>
-          <View style={{ maxWidth: 380 }}>
-            <Text style={[s.docTitle, { fontSize: 10.5 }]}>
-              CONDITION REPORT INSPECTION SCHEDULE FOR RESIDENTIAL AND SIMILAR PREMISES WITH UP TO 100 A SUPPLY
-            </Text>
-          </View>
-          <ReportNoRight reference={reference} />
-        </View>
-
-        {/* Outcomes legend, as on the model form */}
-        <View style={{ flexDirection: "row", borderWidth: 1, borderColor: INK, marginBottom: 5 }}>
-          {[
-            ["Acceptable condition", "TICK"],
-            ["Unacceptable condition", "C1 or C2"],
-            ["Improvement recommended", "C3"],
-            ["Further investigation", "FI"],
-            ["Not verified", "N/V"],
-            ["Limitation", "LIM"],
-            ["Not applicable", "N/A"],
-          ].map(([label, code], i) => (
-            <View
-              key={label}
-              style={{
-                flex: 1,
-                alignItems: "center",
-                justifyContent: "center",
-                paddingVertical: 3,
-                paddingHorizontal: 2,
-                borderLeftWidth: i === 0 ? 0 : 0.5,
-                borderLeftColor: RULE,
-              }}
-            >
-              <Text style={[s.small, { textAlign: "center", marginBottom: 2 }]}>{label}</Text>
-              {code === "TICK" ? <Tick /> : <Text style={[s.bold, { fontSize: 6.5 }]}>{code}</Text>}
-            </View>
-          ))}
-        </View>
-
-        {INSPECTION_SCHEDULE.map((section) => (
-          <View key={section.number} style={{ marginBottom: 4 }}>
-            <View
-              style={{
-                flexDirection: "row",
-                borderWidth: 0.8,
-                borderColor: INK,
-                backgroundColor: "#e8e8e8",
-              }}
-              wrap={false}
-            >
-              <Text style={[s.bold, { width: 30, padding: 2.5, borderRightWidth: 0.5, borderRightColor: RULE }]}>
-                {section.number}.0
-              </Text>
-              <Text style={[s.bold, { flex: 1, padding: 2.5 }]}>
-                {section.title.toUpperCase()}
-                {section.ref ? ` (${section.ref})` : ""}
-              </Text>
-              <View style={{ width: 54, borderLeftWidth: 0.5, borderLeftColor: RULE }} />
-            </View>
-            {section.items.map((item) => {
-              const outcome = outcomes[item.id];
+            {Array.from({ length: Math.max(cert.observations.length, MIN_OBSERVATION_ROWS) }, (_, i) => {
+              const obs = cert.observations[i];
               return (
                 <View
-                  key={item.id}
-                  style={{
-                    flexDirection: "row",
-                    borderLeftWidth: 0.8,
-                    borderRightWidth: 0.8,
-                    borderBottomWidth: 0.4,
-                    borderColor: INK,
-                  }}
+                  key={obs?.id ?? `blank-${i}`}
+                  style={{ flexDirection: "row", borderBottomWidth: 0.4, borderBottomColor: BOX_BORDER, minHeight: 16 }}
                   wrap={false}
                 >
-                  <Text style={{ width: 30, padding: 2.5, borderRightWidth: 0.4, borderRightColor: RULE }}>
-                    {item.id}
+                  <Text style={{ width: 34, padding: 2, textAlign: "center" }}>{obs ? i + 1 : ""}</Text>
+                  <Text style={{ flex: 1, padding: 2, borderLeftWidth: 0.4, borderRightWidth: 0.4, borderColor: BOX_BORDER }}>
+                    {obs
+                      ? `${obs.itemNumber ? `Inspection Schedule Item ${obs.itemNumber}: ` : ""}${obs.description ?? ""}${obs.location ? ` (${obs.location})` : ""}`
+                      : ""}
                   </Text>
-                  <Text style={{ flex: 1, padding: 2.5 }}>
-                    {item.text}
-                    {item.ref ? ` (${item.ref})` : ""}
-                  </Text>
-                  <View
-                    style={{
-                      width: 54,
-                      padding: 2.5,
-                      borderLeftWidth: 0.4,
-                      borderLeftColor: RULE,
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    {outcome === "ok" ? (
-                      <Tick />
-                    ) : (
-                      <Text style={s.bold}>{outcome === "NV" ? "N/V" : outcome === "NA" ? "N/A" : (outcome ?? "")}</Text>
-                    )}
-                  </View>
+                  <View style={{ width: 60 }}>{obs ? <CodeChip code={obs.code} /> : null}</View>
                 </View>
               );
             })}
           </View>
+
+          <Text style={[s.small, { marginTop: 3, marginBottom: 2 }]}>
+            One of the following codes, as appropriate, has been allocated to each of the observations made above to
+            indicate to the person(s) responsible for the installation the degree of urgency for remedial action.
+          </Text>
+          <View style={[s.row, { gap: 8 }]}>
+            {[
+              ["C1", "Danger Present. Risk of injury. Immediate remedial action required", RED, "#ffffff"],
+              ["C2", "Potentially dangerous. Urgent remedial action required", RED, "#ffffff"],
+              ["C3", "Improvement recommended", ORANGE, "#111111"],
+              ["FI", "Further investigation required without delay", YELLOW, "#111111"],
+            ].map(([code, text, bg, fg]) => (
+              <View key={code} style={{ flexDirection: "row", alignItems: "center", gap: 3, flex: 1 }}>
+                <View style={{ backgroundColor: bg, paddingHorizontal: 3, paddingVertical: 1 }}>
+                  <Text style={{ color: fg, fontWeight: "bold", fontSize: 7 }}>{code}</Text>
+                </View>
+                <Text style={{ fontSize: 5.8, flex: 1 }}>{text}</Text>
+              </View>
+            ))}
+          </View>
+          <View style={{ marginTop: 3 }}>
+            <View style={s.row}>
+              <Field label="Immediate remedial action required for items:" value={itemsByCode("C1")} />
+            </View>
+            <View style={s.row}>
+              <Field label="Urgent remedial action required for items:" value={itemsByCode("C2")} />
+            </View>
+            <View style={s.row}>
+              <Field label="Improvement recommended for items:" value={itemsByCode("C3")} />
+            </View>
+            <View style={s.row}>
+              <Field label="Further investigation required for items:" value={itemsByCode("FI")} />
+            </View>
+          </View>
+        </View>
+
+        <SectionBar letter="H" title="Declaration" />
+        <View style={s.panel}>
+          <Text style={[s.small, s.bold, { marginBottom: 3 }]}>{DECLARATION}</Text>
+          <View style={s.row}>
+            <Field label="Trading Title:" value={orgName} />
+            <Field label="Registration Number (if applicable):" value={cert.inspector?.registrationNumber} />
+          </View>
+          <Text style={[s.bold, { marginBottom: 2, marginTop: 2 }]}>For the INSPECTION, TESTING AND ASSESSMENT of the report:</Text>
+          <View style={s.row}>
+            <Field label="Name:" value={cert.inspector?.name} flex={1.1} />
+            <Field label="Position:" value="" flex={0.8} />
+            <View style={{ flexDirection: "row", alignItems: "center", flex: 1, gap: 3 }}>
+              <Text style={s.label}>Signature:</Text>
+              <Text style={[s.boxValue, { flex: 1, fontStyle: "italic", fontWeight: "normal" }]}>
+                {cert.inspector?.name ?? ""}
+              </Text>
+            </View>
+            <Field label="Date:" value={cert.inspectorSignedAt} flex={0.6} />
+          </View>
+          <Text style={[s.bold, { marginBottom: 2 }]}>Report reviewed and authorised for issue by:</Text>
+          <View style={s.row}>
+            <Field label="Name:" value={cert.qsReviewer?.name ?? cert.inspector?.name} flex={1.1} />
+            <Field label="Position:" value="" flex={0.8} />
+            <View style={{ flexDirection: "row", alignItems: "center", flex: 1, gap: 3 }}>
+              <Text style={s.label}>Signature:</Text>
+              <Text style={[s.boxValue, { flex: 1, fontStyle: "italic", fontWeight: "normal" }]}>
+                {cert.qsReviewer?.name ?? cert.inspector?.name ?? ""}
+              </Text>
+            </View>
+            <Field label="Date:" value={cert.qsSignedAt ?? cert.inspectorSignedAt ?? issuedAt.slice(0, 10)} flex={0.6} />
+          </View>
+        </View>
+
+        <SectionBar title="Schedules" />
+        <View style={s.panel}>
+          <Text style={s.small}>
+            {Math.max(1, cert.boards.length)} schedule(s) of circuit details and test results and 1 inspection
+            schedule are attached. The attached schedules are part of this document and this report is valid only when
+            they are attached to it.
+          </Text>
+        </View>
+
+        <Footer reference={reference} />
+      </Page>
+
+      {/* ---------------- Page 3: I supply, J particulars ---------------- */}
+      <Page size="A4" style={s.page}>
+        <SectionBar letter="I" title="Supply characteristics and earthing arrangements" />
+        <View style={[s.panel, { flexDirection: "row", gap: 6 }]}>
+          <View style={{ width: 96 }}>
+            <Text style={[s.bold, { marginBottom: 2 }]}>Earthing Arrangements</Text>
+            {(["TN-S", "TN-C-S", "TT", "IT", "TN-C"] as const).map((sys) => (
+              <View key={sys} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
+                <Text style={s.label}>{sys}:</Text>
+                <MarkBox state={supply?.earthing === sys ? "tick" : "N/A"} />
+              </View>
+            ))}
+          </View>
+          <View style={{ flex: 1.3 }}>
+            <Text style={[s.bold, { marginBottom: 2 }]}>Number and Type of Live Conductors</Text>
+            {["1-phase (2-wire)", "1-phase (3-wire)", "2-phase (3-wire)", "3-phase (3-wire)", "3-phase (4-wire)"].map((label) => (
+              <View key={label} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
+                <Text style={s.label}>{label}:</Text>
+                <MarkBox
+                  state={
+                    supply?.liveConductors && label.toLowerCase().startsWith(supply.liveConductors.slice(0, 7).toLowerCase())
+                      ? "tick"
+                      : "N/A"
+                  }
+                />
+              </View>
+            ))}
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 2 }}>
+              <Text style={s.label}>Confirmation of supply polarity:</Text>
+              <MarkBox state="tick" />
+            </View>
+          </View>
+          <View style={{ flex: 1.6 }}>
+            <Text style={[s.bold, { marginBottom: 2 }]}>Nature of Supply Parameters</Text>
+            <View style={s.row}>
+              <Field label="Nominal voltage, U/Uo:" value={supply?.nominalVoltageU0 ?? supply?.nominalVoltageU} unit="V" />
+            </View>
+            <View style={s.row}>
+              <Field label="Nominal frequency, f:" value={supply?.frequencyHz} unit="Hz" />
+            </View>
+            <View style={s.row}>
+              <Field label="Prospective fault current, Ipf:" value={supply?.prospectiveFaultCurrentKa} unit="kA" />
+            </View>
+            <View style={s.row}>
+              <Field label="External earth fault loop impedance, Ze:" value={supply?.zeOhms} unit="Ω" />
+            </View>
+            <Text style={s.small}>Note: (1) by enquiry (2) by enquiry or by measurement</Text>
+          </View>
+          <View style={{ flex: 1.1 }}>
+            <Text style={[s.bold, { marginBottom: 2 }]}>Supply Protective Device</Text>
+            <View style={s.row}>
+              <Field label="BS (EN):" value={supply?.supplyProtectiveDevice?.standard} />
+            </View>
+            <View style={s.row}>
+              <Field label="Type:" value={supply?.supplyProtectiveDevice?.type} />
+            </View>
+            <View style={s.row}>
+              <Field label="Rated current:" value={supply?.supplyProtectiveDevice?.ratingA} unit="A" />
+            </View>
+          </View>
+        </View>
+
+        <SectionBar letter="J" title="Particulars of installation referred to in this report" />
+        <View style={s.panel}>
+          <View style={[s.row, { alignItems: "flex-start" }]}>
+            <View style={{ width: 150 }}>
+              <Text style={[s.bold, { marginBottom: 2 }]}>Means of Earthing</Text>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
+                <Text style={s.label}>Distributor&apos;s facility:</Text>
+                <MarkBox state={particulars?.meansOfEarthing === "distributor" ? "tick" : "N/A"} />
+              </View>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                <Text style={s.label}>Installation earth electrode:</Text>
+                <MarkBox state={particulars?.meansOfEarthing === "installation-electrode" ? "tick" : "N/A"} />
+              </View>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[s.bold, { marginBottom: 2 }]}>Details of Installation Earth Electrode (where applicable)</Text>
+              <View style={s.row}>
+                <Field label="Type:" value={particulars?.earthElectrode?.type} flex={1} />
+                <Field label="Location:" value={particulars?.earthElectrode?.location} flex={1.4} />
+              </View>
+              <View style={s.row}>
+                <Field label="Resistance to Earth:" value={particulars?.earthElectrode?.resistanceOhms} unit="Ω" flex={0.8} />
+              </View>
+            </View>
+          </View>
+
+          <Text style={[s.bold, { marginBottom: 2, marginTop: 2 }]}>Main Switch / Switch-Fuse / Circuit-Breaker / RCD</Text>
+          <View style={s.row}>
+            <Field label="Location:" value={particulars?.mainSwitch?.location} flex={1.4} />
+            <Field label="BS (EN):" value={particulars?.mainSwitch?.bsStandard} flex={1} />
+            <Field label="Number of poles:" value={particulars?.mainSwitch?.poles} flex={0.7} />
+            <Field label="Current rating:" value={particulars?.mainSwitch?.ratingA} unit="A" flex={0.8} />
+          </View>
+
+          <Text style={[s.bold, { marginBottom: 2, marginTop: 2 }]}>Earthing and Protective Bonding Conductors</Text>
+          <View style={s.row}>
+            <Field label="Earthing conductor material:" value={particulars?.earthingConductor?.material} flex={1.1} />
+            <Field label="csa:" value={particulars?.earthingConductor?.csaMm2} unit="mm²" flex={0.6} />
+            <Field label="Main bonding material:" value={particulars?.mainBondingConductor?.material} flex={1.1} />
+            <Field label="csa:" value={particulars?.mainBondingConductor?.csaMm2} unit="mm²" flex={0.6} />
+          </View>
+          <View style={[s.row, { flexWrap: "wrap" }]}>
+            <Choice label="To water installation pipes" state={bonded.has("water") ? "tick" : "N/A"} />
+            <Choice label="To gas installation pipes" state={bonded.has("gas") ? "tick" : "N/A"} />
+            <Choice label="To oil installation pipes" state={bonded.has("oil") ? "tick" : "N/A"} />
+            <Choice label="To structural steel" state={bonded.has("structural steel") || bonded.has("steel") ? "tick" : "N/A"} />
+            <Choice label="To lightning protection" state={bonded.has("lightning") ? "tick" : "N/A"} />
+          </View>
+        </View>
+
+        <Footer reference={reference} />
+      </Page>
+
+      {/* ---------------- Inspection schedule ---------------- */}
+      <Page size="A4" style={s.page}>
+        <View fixed>
+          <SectionBar title="Inspection schedule for domestic & similar premises with up to 100A supply" />
+          <View style={{ flexDirection: "row", backgroundColor: "#dddddd", borderWidth: 0.7, borderColor: INK, borderTopWidth: 0 }}>
+            <Text style={[s.bold, { width: 36, padding: 2, textAlign: "center" }]}>Item</Text>
+            <Text style={[s.bold, { flex: 1, padding: 2, textAlign: "center" }]}>Description</Text>
+            <Text style={[s.bold, { width: 52, padding: 2, textAlign: "center" }]}>Outcome</Text>
+          </View>
+        </View>
+
+        {INSPECTION_SCHEDULE.map((section) => (
+          <View key={section.number}>
+            <View
+              style={{ flexDirection: "row", borderWidth: 0.7, borderTopWidth: 0, borderColor: INK, backgroundColor: PANEL }}
+              wrap={false}
+            >
+              <Text style={[s.bold, { width: 36, padding: 2.5, textAlign: "center" }]}>{section.number}.0</Text>
+              <Text style={[s.bold, { flex: 1, padding: 2.5 }]}>
+                {section.title.toUpperCase()}
+                {section.ref ? ` (${section.ref})` : ""}
+              </Text>
+              <View style={{ width: 52 }} />
+            </View>
+            {section.items.map((item) => (
+              <View
+                key={item.id}
+                style={{ flexDirection: "row", borderWidth: 0.7, borderTopWidth: 0, borderColor: INK, minHeight: 15 }}
+                wrap={false}
+              >
+                <Text style={{ width: 36, padding: 2.5, textAlign: "center", backgroundColor: "#f5f5f5" }}>{item.id}</Text>
+                <Text style={{ flex: 1, padding: 2.5, borderLeftWidth: 0.4, borderRightWidth: 0.4, borderColor: BOX_BORDER }}>
+                  {item.text}
+                  {item.ref ? ` (${item.ref})` : ""}
+                </Text>
+                <View style={{ width: 52, alignItems: "stretch", justifyContent: "center", padding: 1.5 }}>
+                  <OutcomeChip outcome={outcomes[item.id]} />
+                </View>
+              </View>
+            ))}
+          </View>
         ))}
 
         {cert.customScheduleItems.length > 0 && (
-          <View style={{ marginBottom: 4 }}>
-            <View style={{ flexDirection: "row", borderWidth: 0.8, borderColor: INK, backgroundColor: "#e8e8e8" }} wrap={false}>
-              <Text style={[s.bold, { width: 30, padding: 2.5, borderRightWidth: 0.5, borderRightColor: RULE }]}>8.0</Text>
-              <Text style={[s.bold, { flex: 1, padding: 2.5 }]}>
-                PROSUMER&apos;S LOW VOLTAGE ELECTRICAL INSTALLATION(S) (Chapter 82)
-              </Text>
-              <View style={{ width: 54, borderLeftWidth: 0.5, borderLeftColor: RULE }} />
+          <View>
+            <View style={{ flexDirection: "row", borderWidth: 0.7, borderTopWidth: 0, borderColor: INK, backgroundColor: PANEL }} wrap={false}>
+              <Text style={[s.bold, { width: 36, padding: 2.5, textAlign: "center" }]}>8.0</Text>
+              <Text style={[s.bold, { flex: 1, padding: 2.5 }]}>PROSUMER&apos;S LOW VOLTAGE ELECTRICAL INSTALLATION(S)</Text>
+              <View style={{ width: 52 }} />
             </View>
             {cert.customScheduleItems.map((item, i) => (
-              <View
-                key={item.id}
-                style={{ flexDirection: "row", borderLeftWidth: 0.8, borderRightWidth: 0.8, borderBottomWidth: 0.4, borderColor: INK }}
-                wrap={false}
-              >
-                <Text style={{ width: 30, padding: 2.5, borderRightWidth: 0.4, borderRightColor: RULE }}>8.{i + 1}</Text>
-                <Text style={{ flex: 1, padding: 2.5 }}>{item.description ?? ""}</Text>
-                <View style={{ width: 54, padding: 2.5, borderLeftWidth: 0.4, borderLeftColor: RULE, alignItems: "center", justifyContent: "center" }}>
-                  {item.outcome === "ok" ? (
-                    <Tick />
-                  ) : (
-                    <Text style={s.bold}>{item.outcome === "NV" ? "N/V" : item.outcome === "NA" ? "N/A" : (item.outcome ?? "")}</Text>
-                  )}
+              <View key={item.id} style={{ flexDirection: "row", borderWidth: 0.7, borderTopWidth: 0, borderColor: INK, minHeight: 15 }} wrap={false}>
+                <Text style={{ width: 36, padding: 2.5, textAlign: "center", backgroundColor: "#f5f5f5" }}>8.{i + 1}</Text>
+                <Text style={{ flex: 1, padding: 2.5, borderLeftWidth: 0.4, borderRightWidth: 0.4, borderColor: BOX_BORDER }}>
+                  {item.description ?? ""}
+                </Text>
+                <View style={{ width: 52, alignItems: "stretch", justifyContent: "center", padding: 1.5 }}>
+                  <OutcomeChip outcome={item.outcome} />
                 </View>
               </View>
             ))}
           </View>
         )}
 
-        {footer}
+        {/* Outcomes legend, repeated at the foot of every schedule sheet */}
+        <View
+          fixed
+          style={{
+            position: "absolute",
+            bottom: 30,
+            left: 26,
+            right: 26,
+            flexDirection: "row",
+            borderWidth: 0.7,
+            borderColor: INK,
+            backgroundColor: "#ffffff",
+          }}
+        >
+          {[
+            ["Acceptable condition", GREEN, "#ffffff", "PASS"],
+            ["Unacceptable condition", RED, "#ffffff", "C1 or C2"],
+            ["Improvement recommended", ORANGE, "#111111", "C3"],
+            ["Further investigation", YELLOW, "#111111", "FI"],
+            ["Not verified", LAVENDER, "#111111", "N/V"],
+            ["Limitation", LIGHT_BLUE, "#111111", "LIM"],
+            ["Not applicable", "#ffffff", "#111111", "N/A"],
+          ].map(([label, bg, fg, code], i) => (
+            <View
+              key={label}
+              style={{
+                flex: 1,
+                flexDirection: "row",
+                alignItems: "center",
+                borderLeftWidth: i === 0 ? 0 : 0.4,
+                borderLeftColor: BOX_BORDER,
+              }}
+            >
+              <Text style={{ fontSize: 5.4, flex: 1, padding: 1.5 }}>{label}</Text>
+              <View style={{ backgroundColor: bg, paddingHorizontal: 3, paddingVertical: 2 }}>
+                <Text style={{ color: fg, fontWeight: "bold", fontSize: 6 }}>{code}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+
+        <Footer reference={reference} />
       </Page>
+
+      {/* ---------------- Landscape combined schedules per board ---------------- */}
+      {cert.boards.map((board) => (
+        <Page key={board.id} size="A4" orientation="landscape" style={s.page}>
+          <SectionBar title="Distribution board details" />
+          <View style={[s.panel, { marginBottom: 4 }]}>
+            <View style={s.row}>
+              <Field label="DB reference:" value={board.designation} flex={1} />
+              <Field label="Location:" value={board.location} flex={1.2} />
+              <Field label="Supplied from:" value={board.suppliedFrom} flex={1.2} />
+              <Field label="No of phases:" value={board.numberOfPhases} flex={0.6} />
+            </View>
+            <View style={s.row}>
+              <Field label="Main switch BS (EN):" value={board.mainSwitch?.bsStandard} flex={1.2} />
+              <Field label="Rating:" value={board.mainSwitch?.ratingA} unit="A" flex={0.6} />
+              <Field label="Voltage:" value={board.mainSwitch?.voltageV} unit="V" flex={0.6} />
+              <Field label="SPD type(s):" value={board.spd?.type} flex={0.8} />
+              <Field label="Zs at DB:" value={board.zDbOhms} unit="Ω" flex={0.7} />
+              <Field label="Ipf at DB:" value={board.prospectiveFaultCurrentKa} unit="kA" flex={0.7} />
+            </View>
+            <View style={s.row}>
+              <Text style={s.label}>Confirmation of supply polarity</Text>
+              <MarkBox state={board.supplyPolarityConfirmed === "pass" ? "tick" : "N/A"} />
+              <Text style={s.label}>Confirmation of phase sequence</Text>
+              <MarkBox state={board.phaseSequenceConfirmed === "pass" ? "tick" : "N/A"} />
+              <Text style={s.label}>SPD status indicator checked</Text>
+              <MarkBox state={board.spd?.statusConfirmed === "pass" ? "tick" : "N/A"} />
+            </View>
+          </View>
+
+          <SectionBar title="Schedule of circuit details and test results" />
+          <CombinedSchedule board={board} />
+
+          <View style={{ flexDirection: "row", borderWidth: 0.7, borderTopWidth: 0, borderColor: INK }}>
+            <View style={{ width: 60, padding: 2, borderRightWidth: 0.4, borderRightColor: BOX_BORDER }}>
+              <Text style={[s.gridHead, { textAlign: "left" }]}>CODES FOR TYPE OF WIRING</Text>
+            </View>
+            {WIRING_CODES.map(([code, label]) => (
+              <View key={code} style={{ flex: 1, padding: 2, borderRightWidth: 0.4, borderRightColor: BOX_BORDER }}>
+                <Text style={[s.gridHead]}>{code}</Text>
+                <Text style={{ fontSize: 5, textAlign: "center" }}>{label}</Text>
+              </View>
+            ))}
+          </View>
+
+          <View style={[s.row, { marginTop: 6 }]}>
+            <Field label="Tested by name:" value={cert.inspector?.name} flex={1.2} />
+            <View style={{ flexDirection: "row", alignItems: "center", flex: 1, gap: 3 }}>
+              <Text style={s.label}>Signature:</Text>
+              <Text style={[s.boxValue, { flex: 1, fontStyle: "italic", fontWeight: "normal" }]}>
+                {cert.inspector?.name ?? ""}
+              </Text>
+            </View>
+            <Field label="Date:" value={cert.inspectionDate} flex={0.6} />
+          </View>
+
+          <Footer reference={reference} />
+        </Page>
+      ))}
     </Document>
   );
 }
