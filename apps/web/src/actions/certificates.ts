@@ -211,6 +211,10 @@ export interface FlowResult {
   error?: string;
   validation?: ValidationResult;
   ok?: boolean;
+  /** Set when the flow produced a certificate worth navigating to */
+  certificateId?: string;
+  /** Human summary of an import, for the success toast */
+  summary?: string;
 }
 
 async function loadDraft(supabase: Awaited<ReturnType<typeof requireOrg>>["supabase"], id: string) {
@@ -355,8 +359,75 @@ const UPLOAD_MAX_BYTES = 25 * 1024 * 1024;
 const UPLOAD_TYPES = ["application/pdf", "image/jpeg", "image/png", "image/heic", "image/webp"];
 
 /**
- * Brings certificates from previous systems into the register. Files live in
- * the private org-scoped bucket; access is only ever via time-limited signed URLs.
+ * EasyCert import: parses the .easycert bundle into a draft EICR the engineer
+ * can review, complete and issue, and archives the original file beside it.
+ */
+async function importEasycert(
+  supabase: Awaited<ReturnType<typeof requireOrg>>["supabase"],
+  org: OrgContext,
+  userId: string,
+  file: File
+): Promise<FlowResult> {
+  const { parseEasycert } = await import("@/lib/easycert/parse");
+  const parsed = parseEasycert(new Uint8Array(await file.arrayBuffer()));
+  if (!parsed.ok) return { error: parsed.error };
+
+  const reference =
+    parsed.reference && /^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(parsed.reference)
+      ? parsed.reference
+      : `EICR-IMPORT-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+  const data = { ...parsed.data, reference };
+  const validation = validateEicr(data, { today: todayIso(), stage: "draft" });
+
+  const { data: cert, error } = await supabase
+    .from("certificates")
+    .insert({
+      org_id: org.orgId,
+      kind: "EICR" as const,
+      reference,
+      data: toJson(data),
+      validation: toJson(validation),
+      created_by: userId,
+      assigned_to: userId,
+    })
+    .select("id")
+    .single();
+  if (error) {
+    if (error.code === UNIQUE_VIOLATION) {
+      return { error: `A certificate with the reference ${reference} already exists` };
+    }
+    return { error: error.message };
+  }
+
+  // Archive the original bundle beside the draft; nothing from the old system is lost.
+  const originalPath = `${org.orgId}/uploads/${cert.id}-original.easycert`;
+  const { error: uploadError } = await supabase.storage
+    .from("fieldcert")
+    .upload(originalPath, file, { contentType: "application/zip" });
+  if (!uploadError) {
+    await supabase.from("evidence").insert({
+      org_id: org.orgId,
+      certificate_id: cert.id,
+      storage_path: originalPath,
+      kind: "easycert-original",
+      created_by: userId,
+    });
+  }
+
+  revalidatePath("/certificates");
+  const summaryParts = [parsed.clientName, parsed.addressLabel, parsed.inspectionDate].filter(Boolean);
+  return {
+    ok: true,
+    certificateId: cert.id,
+    summary: summaryParts.length ? summaryParts.join(" · ") : reference,
+  };
+}
+
+/**
+ * Brings certificates from previous systems into the register. EasyCert
+ * bundles import as editable draft EICRs; PDFs and photos file into the
+ * register as-is. Files live in the private org-scoped bucket; access is only
+ * ever via time-limited signed URLs.
  */
 export async function uploadLegacyCertificate(formData: FormData): Promise<FlowResult> {
   const { supabase, user, org } = await requireOrg();
@@ -364,7 +435,12 @@ export async function uploadLegacyCertificate(formData: FormData): Promise<FlowR
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) return { error: "Choose a file to upload" };
   if (file.size > UPLOAD_MAX_BYTES) return { error: "Files are limited to 25MB" };
-  if (!UPLOAD_TYPES.includes(file.type)) return { error: "Upload a PDF or a photo (JPEG, PNG, HEIC, WebP)" };
+  if (file.name.toLowerCase().endsWith(".easycert")) {
+    return importEasycert(supabase, org, user.id, file);
+  }
+  if (!UPLOAD_TYPES.includes(file.type)) {
+    return { error: "Upload a PDF, a photo (JPEG, PNG, HEIC, WebP) or an .easycert file" };
+  }
 
   const reference = String(formData.get("reference") ?? "").trim() || file.name.replace(/\.[^.]+$/, "");
   const extension = file.name.split(".").pop()?.toLowerCase() ?? "pdf";
