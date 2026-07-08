@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { requireOrg } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
+import { KindBadge } from "@/components/kind-badge";
 import { StatusBadge } from "@/components/status-badge";
 import { cn } from "@/lib/utils";
 
@@ -228,14 +229,7 @@ export default async function DashboardPage() {
                 href={`/certificates/${c.id}`}
                 className="hover:border-primary/40 flex items-center gap-4 rounded-xl border p-4 transition-colors"
               >
-                <span
-                  className={cn(
-                    "flex size-11 shrink-0 items-center justify-center rounded-lg text-xs font-bold",
-                    c.kind === "UPLOADED" ? "bg-muted text-muted-foreground" : "bg-primary text-primary-foreground"
-                  )}
-                >
-                  {c.kind === "UPLOADED" ? "PDF" : c.kind}
-                </span>
+                <KindBadge kind={c.kind} className="size-11 rounded-lg" />
                 <span className="flex min-w-0 flex-col">
                   <span className="truncate font-semibold">{c.reference ?? c.kind}</span>
                   <span className="text-muted-foreground truncate text-sm">

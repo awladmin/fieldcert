@@ -4,6 +4,7 @@ import { requireOrg } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { KindBadge } from "@/components/kind-badge";
 import { StatusBadge } from "@/components/status-badge";
 import { UploadCertificate } from "@/components/upload-certificate";
 import { CertificateRowActions } from "@/components/certificate-row-actions";
@@ -80,19 +81,6 @@ function FilterChip({ active, href, children }: { active: boolean; href: string;
   );
 }
 
-/** The certificate type tile: instant recognition at a glance. */
-function KindBadge({ kind }: { kind: string }) {
-  return (
-    <span
-      className={cn(
-        "flex size-12 shrink-0 items-center justify-center rounded-xl text-xs font-bold",
-        kind === "UPLOADED" ? "bg-muted text-muted-foreground" : "bg-primary text-primary-foreground"
-      )}
-    >
-      {kind === "UPLOADED" ? "PDF" : kind}
-    </span>
-  );
-}
 
 function ValidationChip({
   status,
