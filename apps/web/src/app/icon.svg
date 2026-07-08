@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
-  <rect x="2" y="2" width="44" height="44" rx="11" fill="#157A55"/>
-  <path d="M33.5 8.5 25 26h6.5L27 39.5 39.5 20h-7l5-11.5z" fill="#F5B841" opacity="0.25"/>
-  <path d="M14 24.5l7 7L34 17" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="FieldCert icon">
+  <rect width="64" height="64" rx="14" fill="#157a49"/>
+  <path d="M24 47 L50 19" fill="none" stroke="#ffffff" stroke-width="9.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M35 8 L19 34 L28 34 L24 49 L41 25 L31 25 Z" fill="#f5a524"/>
 </svg>

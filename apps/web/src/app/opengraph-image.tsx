@@ -22,27 +22,17 @@ export default function OpenGraphImage() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-          <svg viewBox="0 0 48 48" width="88" height="88">
-            <rect x="2" y="2" width="44" height="44" rx="11" fill="#ffffff" fillOpacity="0.14" />
-            <rect
-              x="2"
-              y="2"
-              width="44"
-              height="44"
-              rx="11"
+          <svg viewBox="0 0 64 64" width="96" height="96">
+            <rect width="64" height="64" rx="14" fill="#ffffff" fillOpacity="0.12" />
+            <path
+              d="M24 47 L50 19"
               fill="none"
               stroke="#ffffff"
-              strokeOpacity="0.5"
-              strokeWidth="1.5"
-            />
-            <path
-              d="M14 24.5l7 7L34 17"
-              fill="none"
-              stroke="#fff"
-              strokeWidth="5"
+              strokeWidth="9.5"
               strokeLinecap="round"
               strokeLinejoin="round"
             />
+            <path d="M35 8 L19 34 L28 34 L24 49 L41 25 L31 25 Z" fill="#f5a524" />
           </svg>
           <div style={{ display: "flex", fontSize: 64, fontWeight: 700, letterSpacing: -1 }}>
             FieldCert
