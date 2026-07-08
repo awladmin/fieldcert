@@ -197,9 +197,17 @@ export const eicr = z.object({
 
   inspectionDate: isoDate.optional(),
   nextInspectionDue: isoDate.optional(),
-  /** Agreed limitations on the inspection */
+  /** Agreed limitations on the inspection (Regulation 653.2) */
   limitations: z.string().optional(),
+  /** Who the limitations were agreed with */
+  agreedWith: z.string().optional(),
+  operationalLimitations: z.string().optional(),
   extentOfInstallationCovered: z.string().optional(),
+  /** Section C: installation records available (Regulation 651.1) */
+  installationRecordsAvailable: z.boolean().optional(),
+  dateOfLastInspection: isoDate.optional(),
+  /** Section E: general condition of the installation in terms of electrical safety */
+  generalCondition: z.string().optional(),
 
   supply: supplyCharacteristics.optional(),
   particulars: installationParticulars.optional(),

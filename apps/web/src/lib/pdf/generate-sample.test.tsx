@@ -1,7 +1,12 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "vitest";
-import { emptyEicr, type Eicr } from "@fieldcert/cert-schemas";
+import {
+  emptyEicr,
+  INSPECTION_SCHEDULE,
+  type Eicr,
+  type ScheduleOutcome,
+} from "@fieldcert/cert-schemas";
 import { renderEicrPdfBuffer } from "./eicr-pdf";
 
 /**
@@ -24,9 +29,18 @@ function sample(): Eicr {
     inspector: { name: "D. Jordan" },
     inspectorSignedAt: "2026-06-30",
     observations: [
-      { id: "o1", description: "No RCD test labels at consumer unit", code: "C3" },
-      { id: "o2", description: "Bathroom supplementary bonding not verified at one location", code: "C3" },
+      { id: "o1", itemNumber: "4.10", description: "No RCD test labels at consumer unit", code: "C3" },
+      { id: "o2", itemNumber: "6.4", description: "Bathroom supplementary bonding not verified at one location", code: "C3" },
     ],
+    inspectionSchedule: {
+      ...Object.fromEntries(
+        INSPECTION_SCHEDULE.flatMap((s) =>
+          s.items.map((i) => [i.id, (s.number === 7 ? "NA" : "ok") as ScheduleOutcome])
+        )
+      ),
+      "4.10": "C3" as ScheduleOutcome,
+      "6.4": "C3" as ScheduleOutcome,
+    },
     boards: [
       {
         id: "db1",
