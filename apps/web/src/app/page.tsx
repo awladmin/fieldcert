@@ -623,6 +623,7 @@ export default async function HomePage() {
               <li><Link className="hover:text-foreground" href="#pricing">Pricing</Link></li>
               <li><Link className="hover:text-foreground" href="#api">API</Link></li>
               <li><a className="hover:text-foreground" href="/sample-eicr.pdf" target="_blank">Sample certificate</a></li>
+              <li><Link className="hover:text-foreground" href="/guides/eicr">What is an EICR?</Link></li>
             </ul>
           </div>
           <div>
