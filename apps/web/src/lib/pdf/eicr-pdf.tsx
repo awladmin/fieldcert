@@ -61,7 +61,7 @@ export async function renderEicrPdfBuffer(props: EicrPdfProps): Promise<Buffer> 
   return renderToBuffer(<EicrPdf {...props} />);
 }
 
-const ACCENT = "#157A55";
+const ACCENT = "#157a49";
 const INK = "#111111";
 const PANEL = "#ececec";
 const BOX_BORDER = "#8f8f8f";

@@ -48,7 +48,7 @@ export async function saveBranding(formData: FormData): Promise<BrandingResult> 
   const branding = { ...((row.branding ?? {}) as OrgBranding) };
 
   const color = String(formData.get("color") ?? "").trim();
-  if (color && !HEX_PATTERN.test(color)) return { error: "Brand colour must be a hex value like #157A55" };
+  if (color && !HEX_PATTERN.test(color)) return { error: "Brand colour must be a hex value like #157a49" };
   branding.color = color || undefined;
   branding.enrolmentNumber = String(formData.get("enrolmentNumber") ?? "").trim() || undefined;
   branding.address = String(formData.get("address") ?? "").trim() || undefined;

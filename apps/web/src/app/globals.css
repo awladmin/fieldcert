@@ -56,7 +56,7 @@
   --card-foreground: oklch(0.24 0.02 250);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.24 0.02 250);
-  --primary: oklch(0.52 0.11 160);
+  --primary: oklch(0.513 0.117 156); /* FieldCert emblem green #157a49 */
   --primary-foreground: oklch(0.99 0.005 145);
   --secondary: oklch(0.95 0.01 150);
   --secondary-foreground: oklch(0.32 0.04 160);
@@ -91,7 +91,7 @@
   --card-foreground: oklch(0.95 0.008 145);
   --popover: oklch(0.22 0.02 165);
   --popover-foreground: oklch(0.95 0.008 145);
-  --primary: oklch(0.72 0.12 160);
+  --primary: oklch(0.72 0.13 156); /* lighter tint of the emblem green for dark mode */
   --primary-foreground: oklch(0.16 0.02 165);
   --secondary: oklch(0.28 0.025 165);
   --secondary-foreground: oklch(0.95 0.008 145);

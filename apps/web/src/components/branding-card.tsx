@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
-const PRESETS = ["#157A55", "#1d4ed8", "#b91c1c", "#c2410c", "#7c3aed", "#0e7490", "#111827"];
+const PRESETS = ["#157a49", "#1d4ed8", "#b91c1c", "#c2410c", "#7c3aed", "#0e7490", "#111827"];
 
 export interface BrandingValues {
   color: string;
@@ -24,7 +24,7 @@ export interface BrandingValues {
 
 /** Certificate branding: everything here prints on every certificate issued. */
 export function BrandingCard({ initial }: { initial: BrandingValues }) {
-  const [color, setColor] = useState(initial.color || "#157A55");
+  const [color, setColor] = useState(initial.color || "#157a49");
   const [pending, startTransition] = useTransition();
 
   function submit(formData: FormData) {
