@@ -473,6 +473,40 @@ export async function uploadLegacyCertificate(formData: FormData): Promise<FlowR
   return { ok: true };
 }
 
+/**
+ * Deletes a certificate that has not been issued. Issued certificates are
+ * legal records and stay in the register permanently; there is no path to
+ * delete one, only (later) to void it.
+ */
+export async function deleteCertificate(id: string): Promise<FlowResult> {
+  const { supabase } = await requireOrg();
+
+  const { data: cert, error: loadError } = await supabase
+    .from("certificates")
+    .select("id, status, reference")
+    .eq("id", id)
+    .single();
+  if (loadError) return { error: loadError.message };
+  if (cert.status === "issued") {
+    return { error: "Issued certificates are legal records and cannot be deleted" };
+  }
+
+  // Archived files (e.g. imported .easycert originals) go with the certificate.
+  const { data: evidence } = await supabase
+    .from("evidence")
+    .select("storage_path")
+    .eq("certificate_id", id);
+  const paths = (evidence ?? []).map((e) => e.storage_path);
+  if (paths.length > 0) await supabase.storage.from("fieldcert").remove(paths);
+
+  const { error } = await supabase.from("certificates").delete().eq("id", id).neq("status", "issued");
+  if (error) return { error: error.message };
+
+  revalidatePath("/certificates");
+  revalidatePath(`/certificates/${id}`);
+  return { ok: true, summary: cert.reference ?? undefined };
+}
+
 /** Time-limited share link for the issued PDF (clients, landlords, agents). */
 export async function createShareLink(id: string): Promise<{ error?: string; url?: string }> {
   const { supabase } = await requireOrg();
