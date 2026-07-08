@@ -483,23 +483,27 @@ export async function deleteCertificate(id: string): Promise<FlowResult> {
 
   const { data: cert, error: loadError } = await supabase
     .from("certificates")
-    .select("id, status, reference")
+    .select("id, kind, status, reference, pdf_path")
     .eq("id", id)
     .single();
   if (loadError) return { error: loadError.message };
-  if (cert.status === "issued") {
+  // Uploaded records are archived copies from other systems, so removable;
+  // certificates we issued are permanent (the database trigger enforces this
+  // even if this check were bypassed).
+  if (cert.status === "issued" && cert.kind !== "UPLOADED") {
     return { error: "Issued certificates are legal records and cannot be deleted" };
   }
 
-  // Archived files (e.g. imported .easycert originals) go with the certificate.
+  // Archived files (imported .easycert originals, uploaded PDFs) go with it.
   const { data: evidence } = await supabase
     .from("evidence")
     .select("storage_path")
     .eq("certificate_id", id);
   const paths = (evidence ?? []).map((e) => e.storage_path);
+  if (cert.pdf_path) paths.push(cert.pdf_path);
   if (paths.length > 0) await supabase.storage.from("fieldcert").remove(paths);
 
-  const { error } = await supabase.from("certificates").delete().eq("id", id).neq("status", "issued");
+  const { error } = await supabase.from("certificates").delete().eq("id", id);
   if (error) return { error: error.message };
 
   revalidatePath("/certificates");

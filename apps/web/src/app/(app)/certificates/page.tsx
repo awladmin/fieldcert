@@ -314,7 +314,7 @@ export default async function CertificatesPage({
                     warningCount={validation?.warningCount ?? 0}
                   />
                 )}
-                {c.status !== "issued" && (
+                {(c.status !== "issued" || c.kind === "UPLOADED") && (
                   <span className="relative">
                     <CertificateRowActions id={c.id} reference={c.reference ?? "this certificate"} />
                   </span>
