@@ -46,7 +46,20 @@ const VALIDATE_EXAMPLE = `curl -X POST https://your-domain.com/api/v1/validate \
 const ISSUE_EXAMPLE = `curl -X POST https://your-domain.com/api/v1/certificates \\
   -H "Authorization: Bearer fc_live_..." \\
   -H "Content-Type: application/json" \\
-  -d '{ "kind": "EICR", "issue": true, "data": { ...full certificate... } }'`;
+  -d '{
+    "kind": "EICR",
+    "issue": true,
+    "jobNumber": "JOB-1042",
+    "client": { "ref": "HA-001", "name": "Northfield Housing" },
+    "installation": {
+      "uprn": "100023336956",
+      "address": { "line1": "12 High Street", "postcode": "HP7 0AA" }
+    },
+    "data": { ...full certificate... }
+  }'`;
+
+const HISTORY_EXAMPLE = `curl "https://your-domain.com/api/v1/certificates?uprn=100023336956" \\
+  -H "Authorization: Bearer fc_live_..."`;
 
 export function ApiKeysManager({ keys }: { keys: KeyRow[] }) {
   const [name, setName] = useState("");
@@ -203,8 +216,23 @@ export function ApiKeysManager({ keys }: { keys: KeyRow[] }) {
               Create a certificate from your data. With <code>&quot;issue&quot;: true</code> the
               gate runs and, on success, the branded PDF is generated with a 30 day download URL.
               A failing certificate returns 422 with every issue listed and nothing is stored as issued.
+              Pass <code>client.ref</code> (your client id) and <code>installation.uprn</code> or{" "}
+              <code>installation.ref</code> to upsert and link FieldCert records: repeated calls
+              reuse the same records, so every certificate builds the property&apos;s compliance
+              history. <code>jobNumber</code> shows on the PDF footer and is searchable.
             </p>
             <pre className="bg-muted overflow-x-auto rounded-md p-3 text-xs">{ISSUE_EXAMPLE}</pre>
+          </div>
+          <div>
+            <div className="mb-2 flex items-center gap-2">
+              <Badge variant="outline">GET</Badge>
+              <code className="font-semibold">/api/v1/certificates</code>
+            </div>
+            <p className="text-muted-foreground mb-2">
+              The compliance history: filter by <code>uprn</code>, <code>ref</code>,{" "}
+              <code>jobNumber</code> or <code>status</code>, newest first.
+            </p>
+            <pre className="bg-muted overflow-x-auto rounded-md p-3 text-xs">{HISTORY_EXAMPLE}</pre>
           </div>
           <div>
             <div className="mb-2 flex items-center gap-2">

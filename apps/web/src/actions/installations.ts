@@ -32,10 +32,14 @@ export async function saveInstallation(
     address: address as Json,
     postcode: address.postcode ?? null,
     customer_id: customerId,
+    uprn: field("uprn") || null,
   };
   if (id) {
     const { error } = await supabase.from("properties").update(row).eq("id", id);
-    if (error) return { error: error.message };
+    if (error) {
+      if (error.code === "23505") return { error: "Another installation already has that UPRN" };
+      return { error: error.message };
+    }
     revalidatePath("/installations");
     return { ok: true, installationId: id };
   }
@@ -45,7 +49,10 @@ export async function saveInstallation(
     .insert({ org_id: org.orgId, ...row })
     .select("id")
     .single();
-  if (error) return { error: error.message };
+  if (error) {
+    if (error.code === "23505") return { error: "Another installation already has that UPRN" };
+    return { error: error.message };
+  }
   revalidatePath("/installations");
   return { ok: true, installationId: data.id };
 }

@@ -49,6 +49,7 @@ export interface InstallationRow {
   line2: string;
   town: string;
   postcode: string;
+  uprn: string;
   customerId: string;
   clientName: string;
   certificateCount: number;
@@ -76,6 +77,14 @@ function InstallationFields({
           <Input name="town" placeholder="Town or city" aria-label="Town or city" defaultValue={defaults?.town} className="h-11" />
           <Input name="postcode" placeholder="Postcode" aria-label="Postcode" defaultValue={defaults?.postcode} className="h-11" />
         </div>
+      </div>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor={`${prefix}-uprn`}>UPRN (optional)</Label>
+        <Input id={`${prefix}-uprn`} name="uprn" placeholder="e.g. 100023336956" defaultValue={defaults?.uprn} className="h-11" />
+        <p className="text-muted-foreground text-xs">
+          The Unique Property Reference Number. Lets housing associations and connected platforms
+          match this property exactly.
+        </p>
       </div>
       <div className="flex flex-col gap-2">
         <Label>Client</Label>
@@ -181,6 +190,7 @@ export function InstallationsManager({
         <TableHeader>
           <TableRow>
             <TableHead>Address</TableHead>
+            <TableHead>UPRN</TableHead>
             <TableHead>Client</TableHead>
             <TableHead className="text-right">Certificates</TableHead>
             <TableHead className="w-24" />
@@ -190,6 +200,7 @@ export function InstallationsManager({
           {installations.map((row) => (
             <TableRow key={row.id}>
               <TableCell className="font-medium">{row.addressLabel}</TableCell>
+              <TableCell className="font-mono text-xs">{row.uprn || "-"}</TableCell>
               <TableCell>{row.clientName || "-"}</TableCell>
               <TableCell className="text-right tabular-nums">{row.certificateCount}</TableCell>
               <TableCell>
@@ -206,7 +217,7 @@ export function InstallationsManager({
           ))}
           {installations.length === 0 && (
             <TableRow>
-              <TableCell colSpan={4} className="text-muted-foreground py-8 text-center">
+              <TableCell colSpan={5} className="text-muted-foreground py-8 text-center">
                 No installations yet. Add the properties you inspect, or create one automatically
                 when you add a client.
               </TableCell>

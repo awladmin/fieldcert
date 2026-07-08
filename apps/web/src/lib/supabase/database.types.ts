@@ -208,6 +208,7 @@ export type Database = {
           address: Json
           created_at: string
           email: string | null
+          external_ref: string | null
           id: string
           name: string
           org_id: string
@@ -217,6 +218,7 @@ export type Database = {
           address?: Json
           created_at?: string
           email?: string | null
+          external_ref?: string | null
           id?: string
           name: string
           org_id: string
@@ -226,6 +228,7 @@ export type Database = {
           address?: Json
           created_at?: string
           email?: string | null
+          external_ref?: string | null
           id?: string
           name?: string
           org_id?: string
@@ -478,25 +481,31 @@ export type Database = {
           address: Json
           created_at: string
           customer_id: string | null
+          external_ref: string | null
           id: string
           org_id: string
           postcode: string | null
+          uprn: string | null
         }
         Insert: {
           address?: Json
           created_at?: string
           customer_id?: string | null
+          external_ref?: string | null
           id?: string
           org_id: string
           postcode?: string | null
+          uprn?: string | null
         }
         Update: {
           address?: Json
           created_at?: string
           customer_id?: string | null
+          external_ref?: string | null
           id?: string
           org_id?: string
           postcode?: string | null
+          uprn?: string | null
         }
         Relationships: [
           {

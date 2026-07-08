@@ -15,7 +15,7 @@ export default async function InstallationsPage() {
   const [{ data: properties }, { data: customers }, { data: certs }] = await Promise.all([
     supabase
       .from("properties")
-      .select("id, address, customer_id, customers(name)")
+      .select("id, address, uprn, customer_id, customers(name)")
       .eq("org_id", org.orgId)
       .order("created_at", { ascending: false }),
     supabase.from("customers").select("id, name").eq("org_id", org.orgId).order("name"),
@@ -38,6 +38,7 @@ export default async function InstallationsPage() {
       line2: address.line2 ?? "",
       town: address.town ?? "",
       postcode: address.postcode ?? "",
+      uprn: p.uprn ?? "",
       customerId: p.customer_id ?? "",
       clientName: p.customers?.name ?? "",
       certificateCount: certificateCounts.get(p.id) ?? 0,
