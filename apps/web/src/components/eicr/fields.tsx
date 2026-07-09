@@ -174,6 +174,55 @@ export function ChipGroup({
   );
 }
 
+/** Segmented multi-choice chips, e.g. which services are bonded. */
+export function ChipMultiGroup({
+  label,
+  values,
+  onChange,
+  options,
+  className,
+}: {
+  label?: string;
+  values: string[];
+  onChange: (next: string[]) => void;
+  options: Array<{ value: string; label: string }>;
+  className?: string;
+}) {
+  const selected = new Set(values);
+  return (
+    <div className={cn("flex flex-col gap-2", className)}>
+      {label && <Label className="text-sm font-medium">{label}</Label>}
+      <div className="flex flex-wrap gap-1">
+        {options.map((opt) => {
+          const active = selected.has(opt.value);
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              aria-pressed={active}
+              onClick={() => {
+                const next = new Set(selected);
+                if (active) next.delete(opt.value);
+                else next.add(opt.value);
+                // Keep option order stable rather than click order.
+                onChange(options.filter((o) => next.has(o.value)).map((o) => o.value));
+              }}
+              className={cn(
+                "rounded-md border px-3 py-2 text-sm font-semibold transition-colors",
+                active
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:border-foreground/40 hover:text-foreground"
+              )}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /** One-tap common values shown under an input, e.g. 230 V or Copper. */
 export function ValueChips({
   values,

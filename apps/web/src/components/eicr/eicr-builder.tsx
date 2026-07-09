@@ -27,7 +27,7 @@ import { BoardsSection } from "./boards-section";
 import { ScheduleSection } from "./schedule-section";
 import { ValidatePanel } from "./validate-panel";
 import { VoidCertificate } from "./void-certificate";
-import { ChipGroup, NumberField, SelectField, TextField } from "./fields";
+import { ChipGroup, ChipMultiGroup, NumberField, SelectField, TextField, ValueChips } from "./fields";
 import { LIVE_CONDUCTOR_TYPES } from "@fieldcert/cert-schemas";
 
 const YES_NO = [
@@ -58,6 +58,14 @@ const OBSERVATION_CODES = [
 ];
 
 const EARTHING = ["TN-S", "TN-C-S", "TT", "IT"].map((v) => ({ value: v, label: v }));
+const CONDUCTOR_MATERIAL = ["Copper", "Aluminium"].map((v) => ({ value: v, label: v }));
+const MEANS_OF_EARTHING = [
+  { value: "distributor", label: "Distributor's facility (TN-S / TN-C-S)" },
+  { value: "installation-electrode", label: "Installation earth electrode (TT)" },
+];
+const BONDED_SERVICES = ["Water", "Gas", "Oil", "Structural steel", "Lightning protection", "Other"].map(
+  (v) => ({ value: v, label: v })
+);
 
 /** Rules that only make sense once the engineer tries to issue. Hidden inline until then. */
 const ISSUE_STAGE_RULES = new Set(["eicr.completeness", "eicr.polarity.confirmed", "eicr.schedule.complete"]);
@@ -71,6 +79,15 @@ function addYears(anchorIso: string, years: number): string {
   const d = new Date(anchorIso);
   d.setFullYear(d.getFullYear() + years);
   return d.toISOString().slice(0, 10);
+}
+
+/** A quiet sub-heading dividing a section into labelled groups of fields. */
+function SubHead({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-muted-foreground border-b pb-1 text-xs font-semibold tracking-wide uppercase">
+      {children}
+    </p>
+  );
 }
 
 function Section({
@@ -492,50 +509,380 @@ export function EicrBuilder({
           </div>
         </Section>
 
-        <Section part="Part 2" id="part-2" title="Supply characteristics" description="Details of the incoming supply and earthing.">
-          <div className="grid gap-5 sm:grid-cols-3">
-            <SelectField
-              label="Earthing arrangement"
-              value={cert.supply?.earthing}
-              options={EARTHING}
-              issues={issuesFor("supply.earthing")}
-              onChange={(v) =>
-                update((d) => {
-                  d.supply = { ...d.supply, earthing: v as "TN-S" | "TN-C-S" | "TT" | "IT" | undefined };
-                })
-              }
-            />
-            <NumberField
-              label="Nominal voltage U0"
-              unit="V"
-              value={cert.supply?.nominalVoltageU0}
-              onChange={(v) => update((d) => { d.supply = { ...d.supply, nominalVoltageU0: v }; })}
-            />
-            <NumberField
-              label="Ze"
-              unit="ohms"
-              value={cert.supply?.zeOhms}
-              onChange={(v) => update((d) => { d.supply = { ...d.supply, zeOhms: v }; })}
-            />
-            <SelectField
-              label="Live conductors"
-              value={cert.supply?.liveConductors}
-              options={LIVE_CONDUCTOR_TYPES.map((v) => ({ value: v, label: v }))}
-              onChange={(v) => update((d) => { d.supply = { ...d.supply, liveConductors: v }; })}
-            />
-            <NumberField
-              label="Prospective fault current Ipf"
-              unit="kA"
-              step="0.1"
-              value={cert.supply?.prospectiveFaultCurrentKa}
-              onChange={(v) => update((d) => { d.supply = { ...d.supply, prospectiveFaultCurrentKa: v }; })}
-            />
-            <ChipGroup
-              label="Supply polarity confirmed"
-              value={boolToChip(cert.supply?.polarityConfirmed)}
-              options={YES_NO}
-              onChange={(v) => update((d) => { d.supply = { ...d.supply, polarityConfirmed: chipToBool(v) }; })}
-            />
+        <Section
+          part="Part 2"
+          id="part-2"
+          title="Supply and installation particulars"
+          description="The incoming supply, its earthing arrangement, and the installation's main earthing and bonding (Section J of the report)."
+        >
+          <div className="flex flex-col gap-8">
+            {/* Supply */}
+            <div className="flex flex-col gap-4">
+              <SubHead>Supply</SubHead>
+              <div className="grid gap-5 sm:grid-cols-3">
+                <SelectField
+                  label="Earthing arrangement"
+                  value={cert.supply?.earthing}
+                  options={EARTHING}
+                  issues={issuesFor("supply.earthing")}
+                  onChange={(v) =>
+                    update((d) => {
+                      d.supply = { ...d.supply, earthing: v as "TN-S" | "TN-C-S" | "TT" | "IT" | undefined };
+                    })
+                  }
+                />
+                <SelectField
+                  label="Live conductors"
+                  value={cert.supply?.liveConductors}
+                  options={LIVE_CONDUCTOR_TYPES.map((v) => ({ value: v, label: v }))}
+                  onChange={(v) => update((d) => { d.supply = { ...d.supply, liveConductors: v }; })}
+                />
+                <div className="flex flex-col gap-2">
+                  <NumberField
+                    label="Nominal frequency"
+                    unit="Hz"
+                    value={cert.supply?.frequencyHz}
+                    onChange={(v) => update((d) => { d.supply = { ...d.supply, frequencyHz: v }; })}
+                  />
+                  <ValueChips
+                    values={[{ label: "50 Hz", value: 50 }]}
+                    onPick={(v) => update((d) => { d.supply = { ...d.supply, frequencyHz: Number(v) }; })}
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <NumberField
+                    label="Nominal voltage U0 (line to earth)"
+                    unit="V"
+                    value={cert.supply?.nominalVoltageU0}
+                    onChange={(v) => update((d) => { d.supply = { ...d.supply, nominalVoltageU0: v }; })}
+                  />
+                  <ValueChips
+                    values={[{ label: "230 V", value: 230 }]}
+                    onPick={(v) => update((d) => { d.supply = { ...d.supply, nominalVoltageU0: Number(v) }; })}
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <NumberField
+                    label="Nominal voltage U (line to line)"
+                    unit="V"
+                    value={cert.supply?.nominalVoltageU}
+                    onChange={(v) => update((d) => { d.supply = { ...d.supply, nominalVoltageU: v }; })}
+                  />
+                  <ValueChips
+                    values={[
+                      { label: "230 V", value: 230 },
+                      { label: "400 V", value: 400 },
+                    ]}
+                    onPick={(v) => update((d) => { d.supply = { ...d.supply, nominalVoltageU: Number(v) }; })}
+                  />
+                </div>
+                <NumberField
+                  label="Prospective fault current Ipf"
+                  unit="kA"
+                  step="0.1"
+                  value={cert.supply?.prospectiveFaultCurrentKa}
+                  onChange={(v) => update((d) => { d.supply = { ...d.supply, prospectiveFaultCurrentKa: v }; })}
+                />
+                <NumberField
+                  label="External loop impedance Ze"
+                  unit="ohms"
+                  step="0.01"
+                  value={cert.supply?.zeOhms}
+                  onChange={(v) => update((d) => { d.supply = { ...d.supply, zeOhms: v }; })}
+                />
+                <ChipGroup
+                  label="Supply polarity confirmed"
+                  value={boolToChip(cert.supply?.polarityConfirmed)}
+                  options={YES_NO}
+                  onChange={(v) => update((d) => { d.supply = { ...d.supply, polarityConfirmed: chipToBool(v) }; })}
+                />
+              </div>
+            </div>
+
+            {/* Supply protective device (cut-out) */}
+            <div className="flex flex-col gap-4">
+              <SubHead>Supply protective device (cut-out)</SubHead>
+              <div className="grid gap-5 sm:grid-cols-3">
+                <div className="flex flex-col gap-2">
+                  <TextField
+                    label="BS (EN)"
+                    placeholder="e.g. BS 1361"
+                    value={cert.supply?.supplyProtectiveDevice?.standard}
+                    onChange={(v) =>
+                      update((d) => {
+                        d.supply = {
+                          ...d.supply,
+                          supplyProtectiveDevice: { ...d.supply?.supplyProtectiveDevice, standard: v },
+                        };
+                      })
+                    }
+                  />
+                  <ValueChips
+                    values={["BS 1361", "BS 88-3", "BS 3036"].map((s) => ({ label: s, value: s }))}
+                    onPick={(v) =>
+                      update((d) => {
+                        d.supply = {
+                          ...d.supply,
+                          supplyProtectiveDevice: { ...d.supply?.supplyProtectiveDevice, standard: String(v) },
+                        };
+                      })
+                    }
+                  />
+                </div>
+                <TextField
+                  label="Type"
+                  placeholder="e.g. II"
+                  value={cert.supply?.supplyProtectiveDevice?.type}
+                  onChange={(v) =>
+                    update((d) => {
+                      d.supply = {
+                        ...d.supply,
+                        supplyProtectiveDevice: { ...d.supply?.supplyProtectiveDevice, type: v },
+                      };
+                    })
+                  }
+                />
+                <div className="flex flex-col gap-2">
+                  <NumberField
+                    label="Rated current"
+                    unit="A"
+                    value={cert.supply?.supplyProtectiveDevice?.ratingA}
+                    onChange={(v) =>
+                      update((d) => {
+                        d.supply = {
+                          ...d.supply,
+                          supplyProtectiveDevice: { ...d.supply?.supplyProtectiveDevice, ratingA: v },
+                        };
+                      })
+                    }
+                  />
+                  <ValueChips
+                    values={[60, 80, 100].map((n) => ({ label: `${n}A`, value: n }))}
+                    onPick={(v) =>
+                      update((d) => {
+                        d.supply = {
+                          ...d.supply,
+                          supplyProtectiveDevice: { ...d.supply?.supplyProtectiveDevice, ratingA: Number(v) },
+                        };
+                      })
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Section J: earthing and bonding */}
+            <div className="flex flex-col gap-4">
+              <SubHead>Earthing and main bonding</SubHead>
+              <div className="grid gap-5 sm:grid-cols-3">
+                <SelectField
+                  label="Means of earthing"
+                  value={cert.particulars?.meansOfEarthing}
+                  options={MEANS_OF_EARTHING}
+                  onChange={(v) =>
+                    update((d) => {
+                      d.particulars = {
+                        ...d.particulars,
+                        meansOfEarthing: v as "distributor" | "installation-electrode" | undefined,
+                      };
+                    })
+                  }
+                />
+                <SelectField
+                  label="Earthing conductor material"
+                  value={cert.particulars?.earthingConductor?.material}
+                  options={CONDUCTOR_MATERIAL}
+                  onChange={(v) =>
+                    update((d) => {
+                      d.particulars = {
+                        ...d.particulars,
+                        earthingConductor: { ...d.particulars?.earthingConductor, material: v },
+                      };
+                    })
+                  }
+                />
+                <div className="flex flex-col gap-2">
+                  <NumberField
+                    label="Earthing conductor CSA"
+                    unit="mm²"
+                    value={cert.particulars?.earthingConductor?.csaMm2}
+                    onChange={(v) =>
+                      update((d) => {
+                        d.particulars = {
+                          ...d.particulars,
+                          earthingConductor: { ...d.particulars?.earthingConductor, csaMm2: v },
+                        };
+                      })
+                    }
+                  />
+                  <ValueChips
+                    values={[6, 10, 16, 25].map((n) => ({ label: `${n}`, value: n }))}
+                    onPick={(v) =>
+                      update((d) => {
+                        d.particulars = {
+                          ...d.particulars,
+                          earthingConductor: { ...d.particulars?.earthingConductor, csaMm2: Number(v) },
+                        };
+                      })
+                    }
+                  />
+                </div>
+                <SelectField
+                  label="Main bonding material"
+                  value={cert.particulars?.mainBondingConductor?.material}
+                  options={CONDUCTOR_MATERIAL}
+                  onChange={(v) =>
+                    update((d) => {
+                      d.particulars = {
+                        ...d.particulars,
+                        mainBondingConductor: { ...d.particulars?.mainBondingConductor, material: v },
+                      };
+                    })
+                  }
+                />
+                <div className="flex flex-col gap-2">
+                  <NumberField
+                    label="Main bonding conductor CSA"
+                    unit="mm²"
+                    value={cert.particulars?.mainBondingConductor?.csaMm2}
+                    onChange={(v) =>
+                      update((d) => {
+                        d.particulars = {
+                          ...d.particulars,
+                          mainBondingConductor: { ...d.particulars?.mainBondingConductor, csaMm2: v },
+                        };
+                      })
+                    }
+                  />
+                  <ValueChips
+                    values={[10, 16, 25].map((n) => ({ label: `${n}`, value: n }))}
+                    onPick={(v) =>
+                      update((d) => {
+                        d.particulars = {
+                          ...d.particulars,
+                          mainBondingConductor: { ...d.particulars?.mainBondingConductor, csaMm2: Number(v) },
+                        };
+                      })
+                    }
+                  />
+                </div>
+                <ChipMultiGroup
+                  label="Main bonding to services"
+                  className="sm:col-span-3"
+                  values={cert.particulars?.bondedServices ?? []}
+                  options={BONDED_SERVICES}
+                  onChange={(next) =>
+                    update((d) => {
+                      d.particulars = { ...d.particulars, bondedServices: next };
+                    })
+                  }
+                />
+              </div>
+              {(cert.particulars?.meansOfEarthing === "installation-electrode" ||
+                cert.supply?.earthing === "TT") && (
+                <div className="grid gap-5 sm:grid-cols-3">
+                  <TextField
+                    label="Earth electrode type"
+                    placeholder="e.g. Rod"
+                    value={cert.particulars?.earthElectrode?.type}
+                    onChange={(v) =>
+                      update((d) => {
+                        d.particulars = {
+                          ...d.particulars,
+                          earthElectrode: { ...d.particulars?.earthElectrode, type: v },
+                        };
+                      })
+                    }
+                  />
+                  <TextField
+                    label="Electrode location"
+                    placeholder="e.g. External wall"
+                    value={cert.particulars?.earthElectrode?.location}
+                    onChange={(v) =>
+                      update((d) => {
+                        d.particulars = {
+                          ...d.particulars,
+                          earthElectrode: { ...d.particulars?.earthElectrode, location: v },
+                        };
+                      })
+                    }
+                  />
+                  <NumberField
+                    label="Electrode resistance"
+                    unit="ohms"
+                    value={cert.particulars?.earthElectrode?.resistanceOhms}
+                    onChange={(v) =>
+                      update((d) => {
+                        d.particulars = {
+                          ...d.particulars,
+                          earthElectrode: { ...d.particulars?.earthElectrode, resistanceOhms: v },
+                        };
+                      })
+                    }
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Main switch / switch-fuse at the origin */}
+            <div className="flex flex-col gap-4">
+              <SubHead>Main switch / switch-fuse</SubHead>
+              <div className="grid gap-5 sm:grid-cols-3">
+                <TextField
+                  label="Location"
+                  placeholder="e.g. Hallway"
+                  value={cert.particulars?.mainSwitch?.location}
+                  onChange={(v) =>
+                    update((d) => {
+                      d.particulars = {
+                        ...d.particulars,
+                        mainSwitch: { ...d.particulars?.mainSwitch, location: v },
+                      };
+                    })
+                  }
+                />
+                <TextField
+                  label="BS (EN)"
+                  placeholder="e.g. BS EN 60947-3"
+                  value={cert.particulars?.mainSwitch?.bsStandard}
+                  onChange={(v) =>
+                    update((d) => {
+                      d.particulars = {
+                        ...d.particulars,
+                        mainSwitch: { ...d.particulars?.mainSwitch, bsStandard: v },
+                      };
+                    })
+                  }
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <NumberField
+                    label="Rating"
+                    unit="A"
+                    value={cert.particulars?.mainSwitch?.ratingA}
+                    onChange={(v) =>
+                      update((d) => {
+                        d.particulars = {
+                          ...d.particulars,
+                          mainSwitch: { ...d.particulars?.mainSwitch, ratingA: v },
+                        };
+                      })
+                    }
+                  />
+                  <NumberField
+                    label="Poles"
+                    value={cert.particulars?.mainSwitch?.poles}
+                    onChange={(v) =>
+                      update((d) => {
+                        d.particulars = {
+                          ...d.particulars,
+                          mainSwitch: { ...d.particulars?.mainSwitch, poles: v },
+                        };
+                      })
+                    }
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </Section>
 
