@@ -217,7 +217,7 @@ export function SelectField({
       <Label className="flex items-center gap-1.5 text-sm font-medium">
         {label} <FieldTick show={Boolean(value) && isClean(issues)} />
       </Label>
-      <Select value={value ?? ""} onValueChange={(v) => onChange(v || undefined)}>
+      <Select items={options} value={value ?? ""} onValueChange={(v) => onChange(v || undefined)}>
         <SelectTrigger
           className="!h-12 w-full text-base"
           aria-invalid={issues.some((i) => i.severity === "error") || undefined}

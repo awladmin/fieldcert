@@ -106,6 +106,21 @@ export function NewCertificateDialog({
           ? "none"
           : "existing";
 
+  // value -> label maps so the trigger shows names, not raw ids.
+  const clientItems = [
+    { value: NONE, label: "No client yet" },
+    ...clients.map((c) => ({ value: c.id, label: c.label })),
+    { value: NEW, label: "Add a new client..." },
+  ];
+  const installationItems = [
+    { value: NONE, label: "No installation yet" },
+    ...(clientAddressAvailable ? [{ value: CLIENT_ADDRESS, label: "Same address as the client" }] : []),
+    ...installationOptions.map((p) => ({ value: p.id, label: p.label })),
+    { value: NEW, label: "Add a new installation..." },
+  ];
+  const memberItems = members.map((m) => ({ value: m.id, label: m.name }));
+  const qsItems = qsCandidates.map((m) => ({ value: m.id, label: m.name }));
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger render={<Button />}>New certificate</DialogTrigger>
@@ -167,6 +182,7 @@ export function NewCertificateDialog({
               <input type="hidden" name="customerId" value={clientChoice} />
             )}
             <Select
+              items={clientItems}
               value={clientChoice}
               onValueChange={(v) => {
                 setClientChoice(v ?? NONE);
@@ -227,7 +243,7 @@ export function NewCertificateDialog({
             {installationMode === "existing" && (
               <input type="hidden" name="propertyId" value={installationChoice} />
             )}
-            <Select value={installationChoice} onValueChange={(v) => setInstallationChoice(v ?? NONE)}>
+            <Select items={installationItems} value={installationChoice} onValueChange={(v) => setInstallationChoice(v ?? NONE)}>
               <SelectTrigger className="h-11">
                 <SelectValue />
               </SelectTrigger>
@@ -260,7 +276,7 @@ export function NewCertificateDialog({
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="flex flex-col gap-2">
                 <Label>Assigned engineer</Label>
-                <Select name="assignedTo" defaultValue={currentUserId}>
+                <Select items={memberItems} name="assignedTo" defaultValue={currentUserId}>
                   <SelectTrigger className="h-11">
                     <SelectValue />
                   </SelectTrigger>
@@ -277,6 +293,7 @@ export function NewCertificateDialog({
                 <div className="flex flex-col gap-2">
                   <Label>QS reviewer</Label>
                   <Select
+                    items={qsItems}
                     name="qsMember"
                     defaultValue={
                       qsCandidates.some((m) => m.id === currentUserId)

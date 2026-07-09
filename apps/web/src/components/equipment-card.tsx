@@ -80,7 +80,10 @@ export function EquipmentCard({ equipment }: { equipment: EquipmentRow[] }) {
         <form ref={formRef} action={submit} className="grid items-end gap-3 sm:grid-cols-[170px_1fr_1fr_150px_auto]">
           <div className="flex flex-col gap-2">
             <Label>Type</Label>
-            <Select name="kind">
+            <Select
+              name="kind"
+              items={EQUIPMENT_KINDS.map((kind) => ({ value: kind, label: EQUIPMENT_KIND_LABELS[kind] }))}
+            >
               <SelectTrigger className="h-11">
                 <SelectValue placeholder="Select..." />
               </SelectTrigger>

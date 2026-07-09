@@ -116,7 +116,11 @@ export function TeamManager({
           </div>
           <div className="flex flex-col gap-2">
             <Label>Role</Label>
-            <Select value={role} onValueChange={(v) => setRole(v as OrgRole)}>
+            <Select
+              items={ROLE_OPTIONS.map((r) => ({ value: r.value, label: r.label }))}
+              value={role}
+              onValueChange={(v) => setRole(v as OrgRole)}
+            >
               <SelectTrigger className="w-44">
                 <SelectValue />
               </SelectTrigger>
@@ -165,6 +169,7 @@ export function TeamManager({
                       <Badge variant="outline" className="capitalize">{m.role}</Badge>
                     ) : (
                       <Select
+                        items={ROLE_OPTIONS.map((r) => ({ value: r.value, label: r.label }))}
                         value={m.role}
                         onValueChange={(v) =>
                           act(() => updateMemberRole(m.userId, v as OrgRole), "Role updated")

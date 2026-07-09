@@ -88,7 +88,11 @@ function InstallationFields({
       </div>
       <div className="flex flex-col gap-2">
         <Label>Client</Label>
-        <Select name="customerId" defaultValue={defaults?.customerId || NO_CLIENT}>
+        <Select
+          items={[{ value: NO_CLIENT, label: "No client" }, ...clients.map((c) => ({ value: c.id, label: c.name }))]}
+          name="customerId"
+          defaultValue={defaults?.customerId || NO_CLIENT}
+        >
           <SelectTrigger className="h-11">
             <SelectValue />
           </SelectTrigger>
