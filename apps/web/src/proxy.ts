@@ -1,16 +1,9 @@
-import { NextResponse, type NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/session";
 
+// The apex -> www redirect is handled at the Vercel domain level (www set as the
+// primary domain), not here, to avoid an edge/app redirect loop.
 export async function proxy(request: NextRequest) {
-  // Canonicalise the bare apex onto www so the site has one address for SEO.
-  // Only the exact apex host is redirected; preview URLs and localhost are left alone.
-  if (request.headers.get("host") === "fieldcert.co.uk") {
-    const url = request.nextUrl.clone();
-    url.protocol = "https:";
-    url.host = "www.fieldcert.co.uk";
-    url.port = "";
-    return NextResponse.redirect(url, 308);
-  }
   return updateSession(request);
 }
 
