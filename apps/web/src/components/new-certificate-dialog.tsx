@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { ArrowLeft, ChevronRight, Lock, RefreshCw } from "lucide-react";
 import { createCertificate, type CreateCertificateState } from "@/actions/certificates";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +46,36 @@ const NONE = "none";
 const NEW = "new";
 const CLIENT_ADDRESS = "client-address";
 
+/** The certificate families we mean to support. Only EICR is live today; the
+ *  rest render as greyed "Coming soon" so the picker shows the full roadmap.
+ *  Backlog: build the EIC and Minor Works editors + PDFs behind these. */
+const CERT_TYPES = [
+  {
+    kind: "EICR" as const,
+    name: "Electrical Installation Condition Report",
+    standard: "BS 7671:2018+A3(2024)",
+    blurb: "Periodic inspection of an existing installation.",
+    badgeClass: "bg-blue-600 text-white dark:bg-blue-500",
+    live: true,
+  },
+  {
+    kind: "EIC" as const,
+    name: "Electrical Installation Certificate",
+    standard: "New work and major alterations",
+    blurb: "Certifies a new installation or a significant addition.",
+    badgeClass: "bg-violet-600 text-white dark:bg-violet-500",
+    live: false,
+  },
+  {
+    kind: "MEIWC" as const,
+    name: "Minor Electrical Installation Works Certificate",
+    standard: "Small additions and alterations",
+    blurb: "A single circuit altered, not a new circuit.",
+    badgeClass: "bg-teal-600 text-white dark:bg-teal-500",
+    live: false,
+  },
+];
+
 function generateReference() {
   const now = new Date();
   const date = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
@@ -71,6 +101,7 @@ export function NewCertificateDialog({
   defaultOpen?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  const [step, setStep] = useState<"type" | "details">("type");
   const [reference, setReference] = useState(generateReference);
   const [clientChoice, setClientChoice] = useState(NONE);
   const [installationChoice, setInstallationChoice] = useState(NONE);
@@ -121,10 +152,66 @@ export function NewCertificateDialog({
   const memberItems = members.map((m) => ({ value: m.id, label: m.name }));
   const qsItems = qsCandidates.map((m) => ({ value: m.id, label: m.name }));
 
+  const eicrType = CERT_TYPES[0];
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (!o) setStep("type");
+      }}
+    >
       <DialogTrigger render={<Button />}>New certificate</DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+        {step === "type" ? (
+          <>
+            <DialogHeader>
+              <DialogTitle>Select certificate type</DialogTitle>
+              <DialogDescription>
+                Choose the certificate you want to create. More types are on the way.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col gap-2">
+              {CERT_TYPES.map((type) =>
+                type.live ? (
+                  <button
+                    key={type.kind}
+                    type="button"
+                    onClick={() => setStep("details")}
+                    className="hover:border-primary hover:bg-muted/50 focus-visible:ring-ring group flex items-center gap-3 rounded-lg border p-3 text-left transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                  >
+                    <Badge className={type.badgeClass}>{type.kind}</Badge>
+                    <div className="flex flex-1 flex-col">
+                      <span className="text-sm font-medium">{type.name}</span>
+                      <span className="text-muted-foreground text-xs">{type.blurb}</span>
+                    </div>
+                    <ChevronRight className="text-muted-foreground group-hover:text-foreground size-4" />
+                  </button>
+                ) : (
+                  <div
+                    key={type.kind}
+                    aria-disabled
+                    className="bg-muted/30 flex cursor-not-allowed items-center gap-3 rounded-lg border border-dashed p-3 opacity-70"
+                  >
+                    <Badge variant="outline" className="text-muted-foreground">
+                      {type.kind}
+                    </Badge>
+                    <div className="flex flex-1 flex-col">
+                      <span className="text-muted-foreground text-sm font-medium">{type.name}</span>
+                      <span className="text-muted-foreground text-xs">{type.blurb}</span>
+                    </div>
+                    <span className="text-muted-foreground flex items-center gap-1 text-xs font-medium">
+                      <Lock className="size-3" />
+                      Coming soon
+                    </span>
+                  </div>
+                )
+              )}
+            </div>
+          </>
+        ) : (
+          <>
         <DialogHeader>
           <DialogTitle>Add certificate</DialogTitle>
           <DialogDescription>
@@ -133,11 +220,20 @@ export function NewCertificateDialog({
         </DialogHeader>
 
         <form action={formAction} className="flex flex-col gap-5">
+          <button
+            type="button"
+            onClick={() => setStep("type")}
+            className="text-muted-foreground hover:text-foreground -mb-1 flex items-center gap-1 self-start text-xs font-medium transition-colors"
+          >
+            <ArrowLeft className="size-3.5" />
+            Change certificate type
+          </button>
+
           <div className="bg-muted/50 flex items-center gap-3 rounded-lg border p-3">
-            <Badge className="bg-blue-600 text-white dark:bg-blue-500">EICR</Badge>
+            <Badge className={eicrType.badgeClass}>{eicrType.kind}</Badge>
             <div className="flex flex-col">
-              <span className="text-sm font-medium">Electrical Installation Condition Report</span>
-              <span className="text-muted-foreground text-xs">BS 7671:2018+A3(2024)</span>
+              <span className="text-sm font-medium">{eicrType.name}</span>
+              <span className="text-muted-foreground text-xs">{eicrType.standard}</span>
             </div>
           </div>
 
@@ -328,6 +424,8 @@ export function NewCertificateDialog({
             {pending ? "Creating" : "Create certificate"}
           </Button>
         </form>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );
