@@ -268,6 +268,7 @@ export function NewCertificateDialog({
                   <Input name="instTown" placeholder="Town or city" aria-label="Town or city" className="h-11" />
                   <Input name="instPostcode" placeholder="Postcode" aria-label="Postcode" className="h-11" />
                 </div>
+                <Input name="instUprn" placeholder="UPRN (optional)" aria-label="UPRN" className="h-11" />
               </div>
             )}
           </div>

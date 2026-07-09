@@ -309,10 +309,14 @@ export async function createCertificate(
         customer_id: customerId,
         address: toJson(address),
         postcode: address.postcode ?? null,
+        uprn: field("instUprn") || null,
       })
       .select("id")
       .single();
-    if (error) return { error: error.message };
+    if (error) {
+      if (error.code === UNIQUE_VIOLATION) return { error: "Another installation already has that UPRN" };
+      return { error: error.message };
+    }
     propertyId = created.id;
     installationAddress = address;
   } else if (installationMode === "client-address") {
