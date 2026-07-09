@@ -337,13 +337,96 @@ const dates: EicrRule = {
   },
 };
 
+/**
+ * A report cannot be issued with an empty schedule of test results: every
+ * installation has at least one board and one circuit. Without this a report
+ * with no boards, circuits or results passes the identity checks and issues as
+ * "Satisfactory" with a blank schedule, which is legally deficient.
+ */
+const scheduleNotEmpty: EicrRule = {
+  id: "eicr.schedule.notEmpty",
+  layer: "statutory",
+  check(cert, ctx) {
+    if (ctx.stage !== "issue") return [];
+    if (cert.boards.length === 0) {
+      return [
+        issue(
+          "eicr.schedule.notEmpty",
+          "boards",
+          "error",
+          "At least one distribution board must be recorded before the report can be issued"
+        ),
+      ];
+    }
+    const circuitCount = cert.boards.reduce((n, b) => n + b.circuits.length, 0);
+    if (circuitCount === 0) {
+      return [
+        issue(
+          "eicr.schedule.notEmpty",
+          "boards",
+          "error",
+          "At least one circuit must be recorded in the schedule of test results"
+        ),
+      ];
+    }
+    return [];
+  },
+};
+
+/**
+ * Earth fault loop impedance is additive from the origin: Zs = Ze + (R1+R2),
+ * so a circuit Zs can never be below its board Zdb, and a board Zdb can never
+ * be below the supply Ze. A reading that breaks this is a measurement or
+ * transcription error, flagged as a warning for the engineer to check.
+ */
+const loopImpedanceConsistency: EicrRule = {
+  id: "eicr.zs.consistency",
+  layer: "statutory",
+  check(cert) {
+    const issues: ValidationIssue[] = [];
+    const ze = cert.supply?.zeOhms;
+    cert.boards.forEach((board, b) => {
+      const zdb = board.zDbOhms;
+      if (ze !== undefined && zdb !== undefined && zdb < ze) {
+        issues.push(
+          issue(
+            "eicr.zs.consistency",
+            `boards[${b}].zDbOhms`,
+            "warning",
+            `Board Zdb ${zdb}Ω is below the supply Ze ${ze}Ω, which is not physically possible. Check the readings`
+          )
+        );
+      }
+      const reference = zdb ?? ze;
+      const referenceName = zdb !== undefined ? `board Zdb ${zdb}Ω` : `supply Ze ${ze}Ω`;
+      if (reference === undefined) return;
+      board.testResults.forEach((tr, t) => {
+        if (tr.zsOhms === undefined) return;
+        if (tr.zsOhms < reference) {
+          issues.push(
+            issue(
+              "eicr.zs.consistency",
+              `boards[${b}].testResults[${t}].zsOhms`,
+              "warning",
+              `Circuit Zs ${tr.zsOhms}Ω is below the ${referenceName}; a circuit cannot read lower than its board. Check the readings`
+            )
+          );
+        }
+      });
+    });
+    return issues;
+  },
+};
+
 export const eicrStatutoryRules: EicrRule[] = [
   completeness,
+  scheduleNotEmpty,
   observationsComplete,
   assessmentConsistency,
   scheduleObservationLink,
   scheduleComplete,
   zsWithinLimits,
+  loopImpedanceConsistency,
   rcdTimes,
   insulationResistance,
   polarity,

@@ -30,6 +30,23 @@ function baseCert(): Eicr {
     inspector: { name: "Dan Jordan" },
     inspectorSignedAt: "2026-07-01",
     inspectionSchedule: fullSchedule(),
+    boards: [
+      {
+        id: "b1",
+        designation: "DB1",
+        circuits: [
+          { id: "c1", circuitNumber: "1", description: "Lighting", ocpd: { curve: "B", ratingA: 6 } },
+        ],
+        testResults: [
+          {
+            circuitId: "c1",
+            polarityConfirmed: true,
+            zsOhms: 0.5,
+            insulationResistance: { liveEarthMohm: 999 },
+          },
+        ],
+      },
+    ],
   };
 }
 
@@ -49,6 +66,37 @@ describe("validateEicr: completeness", () => {
     const result = validateEicr(baseCert(), { today: TODAY, stage: "issue" });
     expect(result.issues).toEqual([]);
     expect(result.issuable).toBe(true);
+  });
+
+  it("cannot be issued with a board but no circuits", () => {
+    const cert: Eicr = {
+      ...baseCert(),
+      boards: [{ id: "b1", designation: "DB1", circuits: [], testResults: [] }],
+    };
+    const result = validateEicr(cert, { today: TODAY, stage: "issue" });
+    expect(result.issuable).toBe(false);
+    expect(result.issues.some((i) => i.rule === "eicr.schedule.notEmpty")).toBe(true);
+  });
+});
+
+describe("validateEicr: loop impedance consistency", () => {
+  it("warns when a circuit Zs is below the supply Ze", () => {
+    const cert: Eicr = {
+      ...baseCert(),
+      supply: { earthing: "TN-C-S", zeOhms: 0.35 },
+      boards: [
+        {
+          id: "b1",
+          designation: "DB1",
+          circuits: [{ id: "c1", circuitNumber: "1", ocpd: { curve: "B", ratingA: 6 } }],
+          // 0.2Ω is below the 0.35Ω origin Ze, which is impossible.
+          testResults: [{ circuitId: "c1", polarityConfirmed: true, zsOhms: 0.2 }],
+        },
+      ],
+    };
+    const result = validateEicr(cert, { today: TODAY });
+    const found = result.issues.find((i) => i.rule === "eicr.zs.consistency");
+    expect(found?.severity).toBe("warning");
   });
 });
 
