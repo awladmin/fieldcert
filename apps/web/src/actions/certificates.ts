@@ -10,7 +10,7 @@ import { renderBoardSchedulePdfBuffer, renderEicrPdfBuffer } from "@/lib/pdf/eic
 import { loadAppendixPhotos, loadCertificateBranding } from "@/lib/pdf/branding";
 import { createHash } from "node:crypto";
 
-const SITE_URL = "https://fieldcert.co.uk";
+const SITE_URL = "https://www.fieldcert.co.uk";
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);

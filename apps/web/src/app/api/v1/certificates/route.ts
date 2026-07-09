@@ -322,7 +322,7 @@ export async function POST(request: Request) {
     jobNumber,
     branding,
     appendixPhotoData,
-    verifyUrl: `https://fieldcert.co.uk/verify/${cert.id}`,
+    verifyUrl: `https://www.fieldcert.co.uk/verify/${cert.id}`,
   });
   const pdfPath = `${ctx.orgId}/certificates/${cert.id}.pdf`;
   const { error: uploadError } = await supabase.storage

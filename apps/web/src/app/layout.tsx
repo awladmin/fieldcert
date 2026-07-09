@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://fieldcert.co.uk"),
+  metadataBase: new URL("https://www.fieldcert.co.uk"),
   title: {
     default: "FieldCert | Electrical certificate software with BS 7671 validation",
     template: "%s | FieldCert",
@@ -33,18 +33,18 @@ export const metadata: Metadata = {
     type: "website",
     siteName: "FieldCert",
     locale: "en_GB",
-    url: "https://fieldcert.co.uk",
+    url: "https://www.fieldcert.co.uk",
     title: "FieldCert | Electrical certificates that cannot go out wrong",
     description:
-      "EICR software with a built-in BS 7671 validation engine, an AI board scanner and an API for field service platforms.",
+      "EICR software with a built-in BS 7671 validation engine, an AI board scanner and an API that pre-fills certificates from your job software.",
   },
   twitter: {
     card: "summary_large_image",
     title: "FieldCert | Electrical certificates that cannot go out wrong",
     description:
-      "EICR software with a built-in BS 7671 validation engine, an AI board scanner and an API for field service platforms.",
+      "EICR software with a built-in BS 7671 validation engine, an AI board scanner and an API that pre-fills certificates from your job software.",
   },
-  alternates: { canonical: "https://fieldcert.co.uk" },
+  alternates: { canonical: "https://www.fieldcert.co.uk" },
 };
 
 export default function RootLayout({

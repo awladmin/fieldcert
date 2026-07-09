@@ -7,7 +7,7 @@ export const metadata = {
   title: "What is an EICR report and why do you need one?",
   description:
     "A plain-English guide to Electrical Installation Condition Reports: what an EICR checks, the legal requirements for landlords, how often you need one, and what the C1, C2, C3 and FI codes mean.",
-  alternates: { canonical: "https://fieldcert.co.uk/guides/eicr" },
+  alternates: { canonical: "https://www.fieldcert.co.uk/guides/eicr" },
 };
 
 const FAQ_JSON_LD = {

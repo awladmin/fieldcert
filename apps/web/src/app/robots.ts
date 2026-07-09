@@ -23,6 +23,6 @@ export default function robots(): MetadataRoute.Robots {
         ],
       },
     ],
-    sitemap: "https://fieldcert.co.uk/sitemap.xml",
+    sitemap: "https://www.fieldcert.co.uk/sitemap.xml",
   };
 }

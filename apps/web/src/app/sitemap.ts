@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const base = "https://fieldcert.co.uk";
+  const base = "https://www.fieldcert.co.uk";
   return [
     { url: base, changeFrequency: "weekly", priority: 1 },
     { url: `${base}/guides/eicr`, changeFrequency: "monthly", priority: 0.8 },

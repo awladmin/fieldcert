@@ -24,7 +24,7 @@ export const metadata = {
   title: { absolute: "FieldCert | Electrical certificates that cannot go out wrong" },
   description:
     "EICR software with a built-in BS 7671 validation engine and an API that pre-fills certificates from your job software. Errors are caught as you type, and a certificate with outstanding errors cannot be issued.",
-  alternates: { canonical: "https://fieldcert.co.uk" },
+  alternates: { canonical: "https://www.fieldcert.co.uk" },
 };
 
 const API_EXAMPLE = `POST /api/v1/certificates/prefill
@@ -37,7 +37,7 @@ const API_EXAMPLE = `POST /api/v1/certificates/prefill
 {
   "id": "cert_8f21...",
   "status": "draft",
-  "editorUrl": "https://app.fieldcert.co.uk/certificates/cert_8f21...",
+  "editorUrl": "https://www.fieldcert.co.uk/certificates/cert_8f21...",
   "prefilled": ["client", "installationAddress", "reference"]
 }`;
 
@@ -59,7 +59,7 @@ export default async function HomePage() {
     operatingSystem: "Web",
     description:
       "Electrical certificate software for UK electricians with a built-in BS 7671 validation engine, AI board scanner and job-software integration.",
-    url: "https://fieldcert.co.uk",
+    url: "https://www.fieldcert.co.uk",
     offers: {
       "@type": "Offer",
       price: "14.99",
@@ -69,7 +69,7 @@ export default async function HomePage() {
     publisher: {
       "@type": "Organization",
       name: "FieldCert",
-      url: "https://fieldcert.co.uk",
+      url: "https://www.fieldcert.co.uk",
       email: "hello@fieldcert.co.uk",
     },
   };
