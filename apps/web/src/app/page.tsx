@@ -23,27 +23,22 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 export const metadata = {
   title: { absolute: "FieldCert | Electrical certificates that cannot go out wrong" },
   description:
-    "EICR software with a built-in BS 7671 validation engine and an API for field service platforms. Errors are caught as you type, and a certificate with outstanding errors cannot be issued.",
+    "EICR software with a built-in BS 7671 validation engine and an API that pre-fills certificates from your job software. Errors are caught as you type, and a certificate with outstanding errors cannot be issued.",
   alternates: { canonical: "https://fieldcert.co.uk" },
 };
 
-const API_EXAMPLE = `POST /api/v1/certificates
+const API_EXAMPLE = `POST /api/v1/certificates/prefill
 {
   "kind": "EICR",
-  "issue": true,
-  "data": { ...job data from your platform... }
+  "data": { ...property, client and job data from your system... }
 }
 
-422 Unprocessable Entity
+201 Created
 {
-  "error": { "message": "Cannot issue: 2 validation errors outstanding" },
-  "issues": [
-    {
-      "field": "boards[0].testResults[0].zsOhms",
-      "severity": "error",
-      "message": "Zs 1.5 exceeds the maximum 1.37 for a B32 device (BS 7671 Table 41.3)"
-    }
-  ]
+  "id": "cert_8f21...",
+  "status": "draft",
+  "editorUrl": "https://app.fieldcert.co.uk/certificates/cert_8f21...",
+  "prefilled": ["client", "installationAddress", "reference"]
 }`;
 
 export default async function HomePage() {
@@ -63,7 +58,7 @@ export default async function HomePage() {
     applicationCategory: "BusinessApplication",
     operatingSystem: "Web",
     description:
-      "Electrical certificate software for UK electricians with a built-in BS 7671 validation engine, AI board scanner and public API.",
+      "Electrical certificate software for UK electricians with a built-in BS 7671 validation engine, AI board scanner and job-software integration.",
     url: "https://fieldcert.co.uk",
     offers: {
       "@type": "Offer",
@@ -363,21 +358,22 @@ export default async function HomePage() {
         <section id="api" className="bg-[oklch(0.24_0.03_165)] text-white">
           <div className="mx-auto grid w-full max-w-6xl items-center gap-12 px-6 py-20 lg:grid-cols-2">
             <div>
-              <Badge className="mb-4 bg-white/10 text-white">For platforms and developers</Badge>
+              <Badge className="mb-4 bg-white/10 text-white">Business plan integration</Badge>
               <h2 className="text-3xl font-bold text-balance">
-                Put validated certificates inside your own software
+                Certificates that start half filled in from your job software
               </h2>
               <p className="mt-4 text-white/75">
-                Field service platforms, landlord systems and job management tools integrate
-                FieldCert with three endpoints. Send your job data, get back a validated, branded
-                PDF certificate. If the data fails the statutory checks, you get every issue listed
-                and nothing is issued.
+                Connect your field service, job management or landlord system. When a job is booked,
+                FieldCert pre-fills the certificate with the property, client and job details, so
+                your engineer opens it already populated, runs the tests, and issues. Every field
+                still passes through the validation engine, and the finished certificate pushes back
+                to your system automatically.
               </p>
               <ul className="mt-6 flex flex-col gap-3 text-sm">
                 {[
-                  "POST /api/v1/validate: run the rules engine over any certificate data",
-                  "POST /api/v1/certificates: create and issue with a generated PDF",
-                  "GET /api/v1/certificates/:id: status, validation and a fresh PDF link",
+                  "POST /api/v1/certificates/prefill: start a certificate from your job data",
+                  "POST /api/v1/validate: run the BS 7671 rules engine over any data",
+                  "GET /api/v1/certificates/:id: pull the issued certificate and PDF back",
                 ].map((line) => (
                   <li key={line} className="flex items-start gap-2">
                     <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[#4CC38A]" />
@@ -385,7 +381,7 @@ export default async function HomePage() {
                   </li>
                 ))}
               </ul>
-              <p className="mt-6 text-sm font-semibold text-white/90">From 99p per issued certificate, with unlimited validation calls. <a className="underline underline-offset-4" href="mailto:hello@fieldcert.co.uk?subject=FieldCert%20Platform%20API">Talk to us</a></p>
+              <p className="mt-6 text-sm font-semibold text-white/90">Included with the Business plan. <a className="underline underline-offset-4" href="mailto:hello@fieldcert.co.uk?subject=FieldCert%20integration">Talk to us about connecting your system</a></p>
             </div>
             <pre className="overflow-x-auto rounded-2xl bg-black/40 p-6 text-xs leading-relaxed text-emerald-100/90 ring-1 ring-white/10">
               {API_EXAMPLE}
@@ -488,7 +484,7 @@ export default async function HomePage() {
               ? "Every plan starts with a 30-day free trial, no card needed. No contracts, cancel any time."
               : "From September 2026. Every plan starts with a 30-day free trial, no card needed. No contracts, cancel any time."}
           </p>
-          <div className="mx-auto mt-12 grid max-w-5xl gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mx-auto mt-12 grid max-w-3xl gap-6 sm:grid-cols-2">
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Individual</CardTitle>
@@ -499,12 +495,13 @@ export default async function HomePage() {
               </CardHeader>
               <CardContent className="flex flex-col gap-2.5 text-sm">
                 {[
-                  "One user",
+                  "One signing engineer",
                   "Unlimited certificates",
-                  "Full validation engine",
+                  "Full BS 7671 validation engine",
+                  "AI board scanner and photo tools",
                   "Branded PDF certificates",
-                  "30 day client share links",
-                  "Upload your old certificates",
+                  "Public verification and 30-day share links",
+                  "Import your existing certificates",
                 ].map((line) => (
                   <span key={line} className="flex items-center gap-2">
                     <CheckCircle2 className="text-primary size-4 shrink-0" /> {line}
@@ -538,10 +535,10 @@ export default async function HomePage() {
                 {[
                   "Everything in Individual",
                   "Office staff and admins free",
-                  "Team invites in seconds",
-                  "QS approval workflow",
+                  "Team invites, roles and QS approval",
+                  "Per-engineer signatures and scheme numbers",
                   "Company-wide certificate register",
-                  "API access to connect your own systems",
+                  "API to pre-fill certificates from your job software",
                 ].map((line) => (
                   <span key={line} className="flex items-center gap-2">
                     <CheckCircle2 className="text-primary size-4 shrink-0" /> {line}
@@ -558,37 +555,18 @@ export default async function HomePage() {
                 )}
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Platform API</CardTitle>
-                <p className="text-4xl font-extrabold tabular-nums">
-                  99p
-                  <span className="text-muted-foreground text-sm font-normal">/issued certificate + VAT</span>
-                </p>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-2.5 text-sm">
-                {[
-                  "Embed certificates in your own software",
-                  "Unlimited validation calls",
-                  "Certificates branded for your customers",
-                  "PDF generation and share links built in",
-                  "Volume discounts from 1,000 certificates",
-                  "Integration support from our team",
-                ].map((line) => (
-                  <span key={line} className="flex items-center gap-2">
-                    <CheckCircle2 className="text-primary size-4 shrink-0" /> {line}
-                  </span>
-                ))}
-                <Button
-                  className="mt-4 h-11"
-                  variant="outline"
-                  render={<a href="mailto:hello@fieldcert.co.uk?subject=FieldCert%20Platform%20API" />}
-                >
-                  Talk to us
-                </Button>
-              </CardContent>
-            </Card>
           </div>
+          <p className="text-muted-foreground mx-auto mt-8 max-w-2xl text-center text-sm">
+            Run your own job or field service software? The Business plan includes an API that
+            pre-fills certificates from your system.{" "}
+            <a
+              className="text-foreground underline underline-offset-4"
+              href="#api"
+            >
+              See how the integration works
+            </a>
+            .
+          </p>
         </section>
 
         {/* Pre-launch: the launch list, the one place every early-access action lands */}
