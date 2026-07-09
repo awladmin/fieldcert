@@ -13,7 +13,7 @@ describe("scanBoard (live)", () => {
   it.skipIf(!enabled)(
     "reads a real electrical panel photo without inventing data",
     async () => {
-      const image = readFileSync(join(__dirname, "../../../public/images/pexels-257736.jpg"));
+      const image = readFileSync(join(__dirname, "../../../public/images/board-scanner.jpg"));
       const scan = await scanBoard(image.toString("base64"), "image/jpeg");
 
       expect(Array.isArray(scan.circuits)).toBe(true);
