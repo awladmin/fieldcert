@@ -66,6 +66,13 @@ function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
 
+/** anchorIso + n years, as YYYY-MM-DD. Runs in event handlers, not render. */
+function addYears(anchorIso: string, years: number): string {
+  const d = new Date(anchorIso);
+  d.setFullYear(d.getFullYear() + years);
+  return d.toISOString().slice(0, 10);
+}
+
 function Section({
   part,
   id,
@@ -384,13 +391,34 @@ export function EicrBuilder({
               issues={issuesFor("inspectionDate")}
               onChange={(v) => update((d) => { d.inspectionDate = v; })}
             />
-            <TextField
-              label="Next inspection due"
-              type="date"
-              value={cert.nextInspectionDue}
-              issues={issuesFor("nextInspectionDue")}
-              onChange={(v) => update((d) => { d.nextInspectionDue = v; })}
-            />
+            <div className="flex flex-col gap-2">
+              <TextField
+                label="Next inspection due"
+                type="date"
+                value={cert.nextInspectionDue}
+                issues={issuesFor("nextInspectionDue")}
+                onChange={(v) => update((d) => { d.nextInspectionDue = v; })}
+              />
+              <div className="flex flex-wrap items-center gap-1">
+                {[1, 3, 5, 10].map((yrs) => (
+                  <button
+                    key={yrs}
+                    type="button"
+                    onClick={() =>
+                      update((d) => {
+                        d.nextInspectionDue = addYears(cert.inspectionDate || todayIso(), yrs);
+                      })
+                    }
+                    className="border-input text-muted-foreground hover:border-foreground/40 hover:text-foreground rounded-md border px-2 py-0.5 text-xs font-medium transition-colors"
+                  >
+                    +{yrs} yr{yrs === 1 ? "" : "s"}
+                  </button>
+                ))}
+                <span className="text-muted-foreground ml-1 text-xs">
+                  from {cert.inspectionDate ? "inspection date" : "today"}
+                </span>
+              </div>
+            </div>
             <TextField
               label="Extent of installation covered"
               placeholder="e.g. Whole installation"
